@@ -1,0 +1,10 @@
+{
+  "id": "grouped-property-explorer",
+  "name": "Facet Folders",
+  "version": "1.0.0",
+  "minAppVersion": "1.12.7",
+  "description": "Browse notes through folders, property facets, and hierarchical tags, with virtual metadata folders and native Properties and Bases grouping.",
+  "author": "Hzero",
+  "authorUrl": "https://github.com/Heptazero",
+  "isDesktopOnly": false
+}

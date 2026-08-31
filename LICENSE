@@ -1,0 +1,11 @@
+SPDX-License-Identifier: GPL-3.0-only
+
+Facet Folders is licensed under the GNU General Public License,
+version 3 only. The complete license text is available at:
+https://www.gnu.org/licenses/gpl-3.0.txt
+
+Copyright (c) 2026 Heptazero.
+
+Property Explorer, Foldable Frontmatter Groups, and Tag Tactician informed the
+interaction design. Facet Folders is an independent implementation and does
+not include source code from those projects.
