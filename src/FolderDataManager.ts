@@ -149,10 +149,19 @@ export class FolderDataManager {
     }
     if (typeof raw === "object") {
       try {
-        return [JSON.stringify(raw)];
+        const serialized = JSON.stringify(raw);
+        return serialized ? [serialized] : [];
       } catch {
-        return [String(raw)];
+        return ["[无法序列化的对象]"];
       }
+    }
+    if (
+      typeof raw !== "string" &&
+      typeof raw !== "number" &&
+      typeof raw !== "boolean" &&
+      typeof raw !== "bigint"
+    ) {
+      return [];
     }
     const value = String(raw).trim();
     return value ? [value] : [];

@@ -242,7 +242,7 @@ export class DissolveGroupModal extends Modal {
       .addButton((button) => button.setButtonText("取消").onClick(() => this.close()))
       .addButton((button) =>
         button
-          .setWarning()
+          .setClass("mod-warning")
           .setButtonText("解散组")
           .onClick(() => {
             this.close();

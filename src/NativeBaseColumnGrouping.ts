@@ -136,11 +136,11 @@ export class NativeBaseColumnGrouping {
     this.observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         const target = mutation.target;
-        if (target instanceof HTMLElement && target.closest(".gpe-base-group-row")) {
+        if (target.instanceOf(HTMLElement) && target.closest(".gpe-base-group-row")) {
           continue;
         }
         for (const node of Array.from(mutation.addedNodes)) {
-          if (!(node instanceof HTMLElement)) continue;
+          if (!node.instanceOf(HTMLElement)) continue;
           if (
             node.matches(".bases-view, .bases-thead, .bases-table-header, .bases-td") ||
             node.querySelector(".bases-thead, .bases-table-header, .bases-td")

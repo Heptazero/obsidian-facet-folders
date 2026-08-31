@@ -100,7 +100,7 @@ export class TagExplorerPanel {
       return;
     }
 
-    const fragment = container.ownerDocument.createDocumentFragment();
+    const fragment = createFragment();
     for (const node of orderedRoots) {
       fragment.appendChild(this.buildTagNode(node, orderedRoots, query));
     }

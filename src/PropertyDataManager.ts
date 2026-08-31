@@ -221,10 +221,19 @@ export class PropertyDataManager {
     }
     if (typeof raw === "object") {
       try {
-        return [JSON.stringify(raw)];
+        const serialized = JSON.stringify(raw);
+        return serialized ? [serialized] : [EMPTY_VALUE];
       } catch {
-        return [String(raw)];
+        return ["[无法序列化的对象]"];
       }
+    }
+    if (
+      typeof raw !== "string" &&
+      typeof raw !== "number" &&
+      typeof raw !== "boolean" &&
+      typeof raw !== "bigint"
+    ) {
+      return [EMPTY_VALUE];
     }
     const value = String(raw).trim();
     return value ? [value] : [EMPTY_VALUE];

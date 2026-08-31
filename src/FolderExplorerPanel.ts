@@ -82,7 +82,7 @@ export class FolderExplorerPanel {
       });
       return;
     }
-    const fragment = container.ownerDocument.createDocumentFragment();
+    const fragment = createFragment();
     if (rootRule) fragment.appendChild(this.buildGroupingBranch(root, rootRule));
     for (const folder of folders) fragment.appendChild(this.buildFolder(folder, 0));
     for (const file of files) fragment.appendChild(this.buildFile(file, root));

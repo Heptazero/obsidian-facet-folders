@@ -453,7 +453,7 @@ export class FfgGrouping {
     try {
       if (await this.app.vault.adapter.exists(ownPath)) {
         const parsed: unknown = JSON.parse(await this.app.vault.adapter.read(ownPath));
-        if (parsed && typeof parsed === "object") return parsed as GroupedPropertyExplorerData;
+        if (parsed && typeof parsed === "object") return parsed;
       }
     } catch (error) {
       console.error("Grouped Property Explorer: cannot read local settings", error);

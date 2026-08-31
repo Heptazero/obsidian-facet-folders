@@ -61,12 +61,12 @@ export class NotePropertyGrouping {
 
       for (const mutation of mutations) {
         const target = mutation.target;
-        if (target instanceof HTMLElement) {
+        if (target.instanceOf(HTMLElement)) {
           const container = target.closest<HTMLElement>(".metadata-container");
           if (container) containers.add(container);
         }
         for (const node of Array.from(mutation.addedNodes)) {
-          if (!(node instanceof HTMLElement)) continue;
+          if (!node.instanceOf(HTMLElement)) continue;
           if (node.matches(".metadata-container")) containers.add(node);
           node
             .querySelectorAll<HTMLElement>(".metadata-container")
@@ -108,7 +108,7 @@ export class NotePropertyGrouping {
       return;
     }
 
-    const parent = properties.at(0)?.parentElement;
+    const parent: HTMLElement | null = properties[0]?.parentElement ?? null;
     if (!parent) return;
     const byKey = new Map<string, HTMLElement>();
     for (const property of properties) {
@@ -125,7 +125,7 @@ export class NotePropertyGrouping {
     container.addClass("gpe-note-properties-active");
     parent.addClass("gpe-note-property-list");
     const addButton = container.querySelector<HTMLElement>(".metadata-add-button");
-    if (addButton) addButton.style.order = "999999";
+    addButton?.setCssStyles({ order: "999999" });
 
     let state = this.foldState.get(container);
     if (!state) {
@@ -181,7 +181,7 @@ export class NotePropertyGrouping {
     folded: boolean,
   ): void {
     if (!property) return;
-    property.style.order = String(order);
+    property.setCssStyles({ order: String(order) });
     if (!groupId) {
       delete property.dataset.gpeNoteGroup;
       delete property.dataset.gpeNoteFolded;
@@ -225,7 +225,7 @@ export class NotePropertyGrouping {
       count.textContent = String(section.keys.length);
     }
 
-    header.style.order = String(order);
+    header.setCssStyles({ order: String(order) });
     header.dataset.folded = String(folded);
     const chevron = header.querySelector<HTMLElement>(".gpe-note-group-chevron");
     const expectedIcon = folded ? "chevron-right" : "chevron-down";

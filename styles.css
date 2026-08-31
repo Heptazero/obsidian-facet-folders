@@ -684,8 +684,10 @@
   flex-direction: column;
 }
 
-.metadata-property[data-gpe-note-folded="true"] {
-  display: none !important;
+.gpe-note-properties-active
+  .gpe-note-property-list
+  > .metadata-property[data-gpe-note-folded="true"] {
+  display: none;
 }
 
 .gpe-note-group-header {

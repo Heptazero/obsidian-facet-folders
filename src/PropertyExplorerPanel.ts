@@ -97,7 +97,7 @@ export class PropertyExplorerPanel {
       this.renderEmpty(container);
       return;
     }
-    const fragment = container.ownerDocument.createDocumentFragment();
+    const fragment = createFragment();
     for (const entry of arrangement.top) {
       fragment.appendChild(this.buildProperty(entry, true, TOP_PROPERTY_SCOPE));
     }

@@ -84,7 +84,7 @@ export class DeletePropertyModal extends Modal {
       .addButton((button) => button.setButtonText("取消").onClick(() => this.close()))
       .addButton((button) =>
         button
-          .setWarning()
+          .setClass("mod-warning")
           .setButtonText("仅删除属性")
           .onClick(() => {
             this.close();

@@ -162,7 +162,7 @@ export async function applyFrontmatterTagBatch(
       }
 
       let changed = false;
-      await app.fileManager.processFrontMatter(file, (frontmatter) => {
+      await app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => {
         const tagsKey =
           Object.keys(frontmatter).find((key) => key.toLowerCase() === "tags") ?? "tags";
         const rawValue = frontmatter[tagsKey];

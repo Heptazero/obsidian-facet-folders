@@ -126,7 +126,7 @@ export default class GroupedPropertyExplorerPlugin extends Plugin {
     kind: "property" | "tag",
   ): Promise<void> {
     await this.activateView();
-    this.getExplorerView()?.openFolderGrouping(folder, kind);
+    await this.getExplorerView()?.openFolderGrouping(folder, kind);
   }
 
   private async removeFolderGrouping(folder: TFolder): Promise<void> {
