@@ -210,14 +210,14 @@ export class PropertyExplorerPanel {
     if (expanded) {
       const children = wrap.createDiv("gpe-children");
       for (const value of this.sortedValues(entry)) {
-        children.appendChild(this.buildValue(entry.key, value));
+        children.appendChild(this.buildValue(entry, value));
       }
     }
     return wrap;
   }
 
-  private buildValue(propertyKey: string, valueEntry: ValueEntry): HTMLElement {
-    const stateKey = `${propertyKey}\u0000${valueEntry.value}`;
+  private buildValue(entry: PropertyEntry, valueEntry: ValueEntry): HTMLElement {
+    const stateKey = `${entry.key}\u0000${valueEntry.value}`;
     const expanded = this.expandedValues.has(stateKey);
     const wrap = createDiv("gpe-value");
     const header = wrap.createDiv("gpe-value-header");
@@ -232,9 +232,14 @@ export class PropertyExplorerPanel {
       this.toggleExpanded(this.expandedValues, stateKey);
       this.callbacks.requestRender();
     });
+    header.addEventListener("contextmenu", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.actions.openValueMenu(event, entry.key, valueEntry);
+    });
     if (expanded) {
       const children = wrap.createDiv("gpe-children");
-      const files = this.filteredNotes(propertyKey, valueEntry.value, valueEntry.files);
+      const files = this.filteredNotes(entry.key, valueEntry.value, valueEntry.files);
       files.sort((a, b) => a.basename.localeCompare(b.basename));
       for (const file of files) children.appendChild(this.buildNote(file));
     }

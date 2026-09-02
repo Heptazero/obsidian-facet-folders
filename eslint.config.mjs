@@ -8,12 +8,18 @@ export default defineConfig([
     languageOptions: {
       parserOptions: {
         projectService: {
-          allowDefaultProject: ["eslint.config.mjs"],
+          allowDefaultProject: ["eslint.config.mjs", "scripts/*.mjs"],
         },
       },
     },
     rules: {
       "obsidianmd/ui/sentence-case": "off",
+    },
+  },
+  {
+    files: ["scripts/**/*.mjs"],
+    rules: {
+      "obsidianmd/no-nodejs-modules": "off",
     },
   },
 ]);

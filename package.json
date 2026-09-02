@@ -7,6 +7,7 @@
     "build": "npm run typecheck && node esbuild.config.mjs production",
     "dev": "node esbuild.config.mjs",
     "lint": "eslint .",
+    "test": "node scripts/run-tests.mjs",
     "typecheck": "tsc --noEmit --skipLibCheck"
   },
   "license": "GPL-3.0-only",

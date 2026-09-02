@@ -1,4 +1,68 @@
 import { App, Modal, Setting } from "obsidian";
+import { EMPTY_PROPERTY_VALUE } from "./PropertyValueMutation";
+
+export class RenamePropertyValueModal extends Modal {
+  constructor(
+    app: App,
+    private readonly propertyKey: string,
+    private readonly oldValue: string,
+    private readonly noteCount: number,
+    private readonly validate: (newValue: string) => string | null,
+    private readonly onConfirm: (newValue: string) => void,
+  ) {
+    super(app);
+  }
+
+  onOpen(): void {
+    this.titleEl.setText("批量修改属性值");
+    this.contentEl.createEl("p", {
+      text: `将属性“${this.propertyKey}”中值为“${this.oldValue}”的 ${this.noteCount} 篇笔记统一修改。`,
+    });
+    this.contentEl.createEl("p", {
+      text: "多值属性只替换当前这一项，其他属性值和笔记文件不会改变。",
+    });
+
+    const errorEl = this.contentEl.createDiv("gpe-modal-error");
+    let nextValue = this.oldValue === EMPTY_PROPERTY_VALUE ? "" : this.oldValue;
+    let submit = (): void => undefined;
+
+    new Setting(this.contentEl).setName("新属性值").addText((text) => {
+      text.setValue(nextValue).onChange((value) => {
+        nextValue = value;
+        errorEl.empty();
+      });
+      text.inputEl.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        submit();
+      });
+      window.setTimeout(() => {
+        text.inputEl.focus();
+        text.inputEl.select();
+      });
+    });
+
+    submit = () => {
+      const normalized = nextValue.trim();
+      const error = this.validate(normalized);
+      if (error) {
+        errorEl.setText(error);
+        return;
+      }
+      this.close();
+      this.onConfirm(normalized);
+    };
+
+    new Setting(this.contentEl)
+      .setClass("gpe-modal-actions")
+      .addButton((button) => button.setButtonText("取消").onClick(() => this.close()))
+      .addButton((button) => button.setCta().setButtonText("批量修改").onClick(submit));
+  }
+
+  onClose(): void {
+    this.contentEl.empty();
+  }
+}
 
 export class RenamePropertyModal extends Modal {
   constructor(

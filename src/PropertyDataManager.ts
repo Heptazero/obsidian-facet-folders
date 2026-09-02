@@ -1,6 +1,11 @@
 import { App, TFile } from "obsidian";
+import {
+  EMPTY_PROPERTY_VALUE,
+  indexPropertyValue,
+  replaceIndexedPropertyValue,
+} from "./PropertyValueMutation";
 
-export const EMPTY_VALUE = "（空值）";
+export const EMPTY_VALUE = EMPTY_PROPERTY_VALUE;
 
 export interface ValueEntry {
   value: string;
@@ -127,6 +132,39 @@ export class PropertyDataManager {
     });
   }
 
+  getValueReplacementError(
+    key: string,
+    oldValue: string,
+    newValue: string,
+    files: TFile[],
+  ): string | null {
+    for (const file of files) {
+      const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter;
+      if (!frontmatter || !Object.prototype.hasOwnProperty.call(frontmatter, key)) continue;
+      try {
+        replaceIndexedPropertyValue(frontmatter[key], oldValue, newValue);
+      } catch (error) {
+        return error instanceof Error ? error.message : `无法转换 ${file.basename} 中的值。`;
+      }
+    }
+    return null;
+  }
+
+  async replacePropertyValue(
+    key: string,
+    oldValue: string,
+    newValue: string,
+    files: TFile[],
+  ): Promise<PropertyMutationResult> {
+    return this.mutatePropertyFiles(files, (frontmatter) => {
+      if (!Object.prototype.hasOwnProperty.call(frontmatter, key)) return false;
+      const result = replaceIndexedPropertyValue(frontmatter[key], oldValue, newValue);
+      if (!result.changed) return false;
+      frontmatter[key] = result.value;
+      return true;
+    });
+  }
+
   private async indexFile(file: TFile): Promise<void> {
     const props = this.extractProperties(file);
     if (props.length === 0) return;
@@ -158,7 +196,7 @@ export class PropertyDataManager {
 
   private async mutatePropertyFiles(
     files: TFile[],
-    mutate: (frontmatter: Record<string, unknown>) => void,
+    mutate: (frontmatter: Record<string, unknown>) => boolean | void,
   ): Promise<PropertyMutationResult> {
     const failures: PropertyMutationFailure[] = [];
     let updated = 0;
@@ -167,13 +205,25 @@ export class PropertyDataManager {
     for (let i = 0; i < files.length; i += batchSize) {
       const batch = files.slice(i, i + batchSize);
       const results = await Promise.allSettled(
-        batch.map((file) => this.app.fileManager.processFrontMatter(file, mutate)),
+        batch.map(async (file) => {
+          let changed = true;
+          await this.app.fileManager.processFrontMatter(
+            file,
+            (frontmatter: Record<string, unknown>) => {
+              changed = mutate(frontmatter) !== false;
+            },
+          );
+          return changed;
+        }),
       );
       results.forEach((result, index) => {
         const file = batch[index];
         if (!file) return;
-        if (result.status === "fulfilled") updated += 1;
-        else failures.push({ file, error: result.reason });
+        if (result.status === "fulfilled") {
+          if (result.value) updated += 1;
+          return;
+        }
+        failures.push({ file, error: result.reason });
       });
     }
 
@@ -208,35 +258,9 @@ export class PropertyDataManager {
     const result: FilePropData[] = [];
     for (const [key, rawValue] of Object.entries(frontmatter)) {
       if (!key || key === "position") continue;
-      result.push({ key, values: this.normaliseValue(rawValue) });
+      result.push({ key, values: indexPropertyValue(rawValue) });
     }
     return result;
-  }
-
-  private normaliseValue(raw: unknown): string[] {
-    if (raw === null || raw === undefined) return [EMPTY_VALUE];
-    if (Array.isArray(raw)) {
-      const values = raw.flatMap((value) => this.normaliseValue(value));
-      return values.length > 0 ? Array.from(new Set(values)) : [EMPTY_VALUE];
-    }
-    if (typeof raw === "object") {
-      try {
-        const serialized = JSON.stringify(raw);
-        return serialized ? [serialized] : [EMPTY_VALUE];
-      } catch {
-        return ["[无法序列化的对象]"];
-      }
-    }
-    if (
-      typeof raw !== "string" &&
-      typeof raw !== "number" &&
-      typeof raw !== "boolean" &&
-      typeof raw !== "bigint"
-    ) {
-      return [EMPTY_VALUE];
-    }
-    const value = String(raw).trim();
-    return value ? [value] : [EMPTY_VALUE];
   }
 
   private getPropertyType(key: string): string {

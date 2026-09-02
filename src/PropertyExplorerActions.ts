@@ -5,8 +5,17 @@ import {
   PropertySection,
 } from "./FfgGrouping";
 import { DissolveGroupModal, GroupEditorModal } from "./GroupActionModals";
-import { DeletePropertyModal, RenamePropertyModal } from "./PropertyActionModals";
-import { PropertyDataManager, PropertyEntry } from "./PropertyDataManager";
+import {
+  DeletePropertyModal,
+  RenamePropertyModal,
+  RenamePropertyValueModal,
+} from "./PropertyActionModals";
+import {
+  EMPTY_VALUE,
+  PropertyDataManager,
+  PropertyEntry,
+  ValueEntry,
+} from "./PropertyDataManager";
 
 interface PropertyActionCallbacks {
   requestRender: () => void;
@@ -85,6 +94,21 @@ export class PropertyExplorerActions {
         .setTitle("删除属性…")
         .setWarning(true)
         .onClick(() => this.openDeleteModal(entry)),
+    );
+    menu.showAtMouseEvent(event);
+  }
+
+  openValueMenu(
+    event: MouseEvent,
+    propertyKey: string,
+    valueEntry: ValueEntry,
+  ): void {
+    const menu = new Menu();
+    menu.addItem((item) =>
+      item
+        .setIcon("pencil")
+        .setTitle("批量修改此值…")
+        .onClick(() => this.openValueModal(propertyKey, valueEntry)),
     );
     menu.showAtMouseEvent(event);
   }
@@ -188,6 +212,29 @@ export class PropertyExplorerActions {
     ).open();
   }
 
+  private openValueModal(propertyKey: string, valueEntry: ValueEntry): void {
+    new RenamePropertyValueModal(
+      this.app,
+      propertyKey,
+      valueEntry.value,
+      valueEntry.files.length,
+      (newValue) => {
+        if (!newValue) return "新属性值不能为空。";
+        if (/\r|\n/.test(newValue)) return "属性值不能包含换行。";
+        if (newValue === valueEntry.value && valueEntry.value !== EMPTY_VALUE) {
+          return "新属性值与原属性值相同。";
+        }
+        return this.dataManager.getValueReplacementError(
+          propertyKey,
+          valueEntry.value,
+          newValue,
+          valueEntry.files,
+        );
+      },
+      (newValue) => void this.replacePropertyValue(propertyKey, valueEntry, newValue),
+    ).open();
+  }
+
   private async renameProperty(oldKey: string, newKey: string): Promise<void> {
     this.callbacks.setLoading(`正在重命名“${oldKey}”…`);
     try {
@@ -220,6 +267,32 @@ export class PropertyExplorerActions {
     } catch (error) {
       console.error("Facet Folders: delete failed", error);
       new Notice(`删除属性“${key}”失败，请查看控制台。`);
+      await this.callbacks.reloadAfterMutation();
+    }
+  }
+
+  private async replacePropertyValue(
+    propertyKey: string,
+    valueEntry: ValueEntry,
+    newValue: string,
+  ): Promise<void> {
+    this.callbacks.setLoading(`正在修改“${propertyKey}”的属性值…`);
+    try {
+      const result = await this.dataManager.replacePropertyValue(
+        propertyKey,
+        valueEntry.value,
+        newValue,
+        valueEntry.files,
+      );
+      await this.callbacks.reloadAfterMutation();
+      this.reportMutation(
+        `已将“${valueEntry.value}”修改为“${newValue}”`,
+        result.updated,
+        result.failures,
+      );
+    } catch (error) {
+      console.error("Facet Folders: property value update failed", error);
+      new Notice(`修改属性“${propertyKey}”的值失败，请查看控制台。`);
       await this.callbacks.reloadAfterMutation();
     }
   }
