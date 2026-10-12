@@ -1,5 +1,6 @@
 import { App, FuzzySuggestModal, Notice } from "obsidian";
 import type { FolderGroupingRule } from "./FolderExplorerSettings";
+import { t } from "./I18n";
 
 export function openFolderGroupingPicker(
   app: App,
@@ -8,7 +9,7 @@ export function openFolderGroupingPicker(
   onChoose: (rule: FolderGroupingRule) => void,
 ): void {
   if (options.length === 0) {
-    new Notice(kind === "property" ? "库中没有可用属性。" : "库中没有层级标签前缀。");
+    new Notice(t(kind === "property" ? "noPropertyOptions" : "noTagPrefixOptions"));
     return;
   }
   new FolderGroupingPicker(app, kind, options, onChoose).open();
@@ -22,11 +23,11 @@ class FolderGroupingPicker extends FuzzySuggestModal<string> {
     private readonly onChoose: (rule: FolderGroupingRule) => void,
   ) {
     super(app);
-    this.setPlaceholder(kind === "property" ? "搜索属性字段…" : "搜索标签前缀…");
+    this.setPlaceholder(t(kind === "property" ? "searchPropertyField" : "searchTagPrefix"));
     this.setInstructions([
-      { command: "↑↓", purpose: "选择" },
-      { command: "↵", purpose: "确认" },
-      { command: "esc", purpose: "取消" },
+      { command: "↑↓", purpose: t("choose") },
+      { command: "↵", purpose: t("confirm") },
+      { command: "esc", purpose: t("cancel") },
     ]);
   }
 

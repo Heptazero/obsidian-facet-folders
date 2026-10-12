@@ -14,6 +14,7 @@ import { PropertyExplorerPanel } from "./PropertyExplorerPanel";
 import { TagExplorerPanel } from "./TagExplorerPanel";
 import type { ExplorerMode } from "./TagExplorerSettings";
 import type GroupedPropertyExplorerPlugin from "./main";
+import { t } from "./I18n";
 
 export const VIEW_TYPE_GROUPED_PROPERTY_EXPLORER = "grouped-property-explorer";
 
@@ -40,13 +41,13 @@ export class GroupedPropertyExplorerView extends ItemView {
 
   constructor(leaf: WorkspaceLeaf, plugin: GroupedPropertyExplorerPlugin) {
     super(leaf);
-    this.tagExplorer = new TagExplorerPanel(plugin.app, {
+    this.tagExplorer = new TagExplorerPanel(plugin.app, plugin.dataStore, {
       requestRender: () => this.renderList(),
     });
-    this.folderExplorer = new FolderExplorerPanel(plugin.app, {
+    this.folderExplorer = new FolderExplorerPanel(plugin.app, plugin.dataStore, {
       requestRender: () => this.renderList(),
     });
-    this.propertyExplorer = new PropertyExplorerPanel(plugin.app, {
+    this.propertyExplorer = new PropertyExplorerPanel(plugin.app, plugin.dataStore, {
       requestRender: () => this.renderList(),
       setLoading: (text) => this.setLoading(text),
       hideLoading: () => this.loadingEl.hide(),
@@ -59,7 +60,7 @@ export class GroupedPropertyExplorerView extends ItemView {
   }
 
   getDisplayText(): string {
-    return "多维文件夹";
+    return t("displayName");
   }
 
   getIcon(): string {
@@ -90,6 +91,11 @@ export class GroupedPropertyExplorerView extends ItemView {
     await this.reloadEverything();
   }
 
+  async refreshLanguage(): Promise<void> {
+    this.buildStaticUi();
+    await this.reloadEverything();
+  }
+
   async openFolderGrouping(
     folder: import("obsidian").TFolder,
     kind: "property" | "tag",
@@ -117,7 +123,7 @@ export class GroupedPropertyExplorerView extends ItemView {
     this.statusEl.hide();
     this.loadingEl = root.createDiv("gpe-loading");
     setIcon(this.loadingEl.createDiv("gpe-loading-icon"), "loader");
-    this.loadingEl.createSpan({ text: "正在索引属性…" });
+    this.loadingEl.createSpan({ text: t("loadingIndex") });
     this.loadingEl.hide();
     this.listEl = root.createDiv("gpe-list");
     this.updateExplorerModeControl();
@@ -126,22 +132,22 @@ export class GroupedPropertyExplorerView extends ItemView {
   private buildViewSwitch(root: HTMLElement): void {
     const switchEl = root.createDiv({
       cls: "gpe-view-switch",
-      attr: { role: "group", "aria-label": "浏览内容" },
+      attr: { role: "group", "aria-label": t("browseContent") },
     });
     this.folderViewButton = switchEl.createEl("button", {
       cls: "gpe-view-mode-button",
-      text: "文件夹",
-      attr: { type: "button", "aria-label": "浏览文件夹" },
+      text: t("folders"),
+      attr: { type: "button", "aria-label": t("browseFolders") },
     });
     this.propertyViewButton = switchEl.createEl("button", {
       cls: "gpe-view-mode-button",
-      text: "属性",
-      attr: { type: "button", "aria-label": "浏览属性" },
+      text: t("properties"),
+      attr: { type: "button", "aria-label": t("browseProperties") },
     });
     this.tagViewButton = switchEl.createEl("button", {
       cls: "gpe-view-mode-button",
-      text: "标签",
-      attr: { type: "button", "aria-label": "浏览标签" },
+      text: t("tags"),
+      attr: { type: "button", "aria-label": t("browseTags") },
     });
     this.folderViewButton.addEventListener("click", () => {
       void this.setExplorerMode("folders");
@@ -162,13 +168,13 @@ export class GroupedPropertyExplorerView extends ItemView {
       cls: "gpe-search-input",
       attr: {
         type: "search",
-        placeholder: "搜索属性、值或笔记…",
+        placeholder: t("searchProperties"),
         spellcheck: "false",
       },
     });
     this.clearSearchButton = searchWrap.createDiv({
       cls: "gpe-search-clear",
-      attr: { "aria-label": "清除搜索" },
+      attr: { "aria-label": t("clearSearch") },
     });
     setIcon(this.clearSearchButton, "x");
     this.clearSearchButton.hide();
@@ -178,31 +184,31 @@ export class GroupedPropertyExplorerView extends ItemView {
       debounce(() => this.updateSearch(), 120, true),
     );
     this.buildOrderSwitch(toolbar);
-    this.addGroupButton = this.toolbarButton(toolbar, "plus", "新建属性组");
+    this.addGroupButton = this.toolbarButton(toolbar, "plus", t("createPropertyGroup"));
     this.addGroupButton.addEventListener("click", () => {
       this.propertyExplorer.openGroupEditor();
     });
     this.tagSelectionButton = this.toolbarButton(
       toolbar,
       "list-checks",
-      "多选笔记并批量修改标签",
+      t("batchModifyTags"),
     );
     this.tagSelectionButton.addEventListener("click", () => {
       this.tagExplorer.toggleSelectionMode();
     });
-    const refresh = this.toolbarButton(toolbar, "refresh-cw", "刷新当前索引");
+    const refresh = this.toolbarButton(toolbar, "refresh-cw", t("refreshCurrentIndex"));
     refresh.addEventListener("click", () => void this.reloadEverything());
   }
 
   private buildOrderSwitch(toolbar: HTMLElement): void {
     const orderSwitch = toolbar.createDiv({
       cls: "gpe-order-switch",
-      attr: { role: "group", "aria-label": "排序方式" },
+      attr: { role: "group", "aria-label": t("orderMode") },
     });
     this.orderSwitchEl = orderSwitch;
     this.alphabeticalModeButton = orderSwitch.createEl("button", {
       cls: "gpe-order-mode-button",
-      attr: { type: "button", "aria-label": "按字母排序；右键可置顶" },
+      attr: { type: "button", "aria-label": t("alphabeticalOrder") },
     });
     setIcon(this.alphabeticalModeButton, "arrow-down-a-z");
     this.alphabeticalModeButton.addEventListener("click", () => {
@@ -210,7 +216,7 @@ export class GroupedPropertyExplorerView extends ItemView {
     });
     this.manualModeButton = orderSwitch.createEl("button", {
       cls: "gpe-order-mode-button",
-      attr: { type: "button", "aria-label": "手动排序；拖动行尾把手" },
+      attr: { type: "button", "aria-label": t("manualOrder") },
     });
     setIcon(this.manualModeButton, "grip-vertical");
     this.manualModeButton.addEventListener("click", () => {
@@ -321,7 +327,7 @@ export class GroupedPropertyExplorerView extends ItemView {
       this.renderList();
     } catch (error) {
       console.error("Facet Folders: cannot change order mode", error);
-      new Notice("无法保存排序方式，请查看控制台。");
+      new Notice(t("saveOrderFailed"));
     }
   }
 
@@ -341,10 +347,10 @@ export class GroupedPropertyExplorerView extends ItemView {
     if (this.searchInput) {
       this.searchInput.placeholder =
         this.explorerMode === "folders"
-          ? "搜索文件夹或笔记…"
+          ? t("searchFolders")
           : this.explorerMode === "tags"
-            ? "搜索标签或笔记…"
-            : "搜索属性、值或笔记…";
+            ? t("searchTags")
+            : t("searchProperties");
     }
     this.orderSwitchEl?.toggle(this.explorerMode !== "folders");
     this.addGroupButton?.toggle(this.explorerMode === "properties");

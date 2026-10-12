@@ -1,4 +1,5 @@
 import type { PropertyGroupConfig } from "./FfgGrouping";
+import { t } from "./I18n";
 
 export interface TemplateField {
   name: string;
@@ -52,7 +53,7 @@ export function createRuntimeGroup(
     }
     return {
       id: group.id,
-      name: group.name || "未命名组",
+      name: group.name || t("unknownGroup"),
       defaultFolded: group.defaultFolded !== false,
       fieldOrder: Array.from(
         new Set([...templateFields, ...(group.fieldOrder ?? [])]),
@@ -69,7 +70,7 @@ export function createRuntimeGroup(
     .map((value) => value.slice(0, -1));
   return {
     id: group.id,
-    name: group.name || "未命名组",
+    name: group.name || t("unknownGroup"),
     defaultFolded: group.defaultFolded !== false,
     fieldOrder: Array.from(
       new Set([...literals, ...templateFields, ...(group.fieldOrder ?? [])]),

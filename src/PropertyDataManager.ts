@@ -4,6 +4,7 @@ import {
   indexPropertyValue,
   replaceIndexedPropertyValue,
 } from "./PropertyValueMutation";
+import { t } from "./I18n";
 
 export const EMPTY_VALUE = EMPTY_PROPERTY_VALUE;
 
@@ -121,7 +122,7 @@ export class PropertyDataManager {
     return this.mutatePropertyFiles(this.getFilesForProperty(oldKey), (frontmatter) => {
       if (!Object.prototype.hasOwnProperty.call(frontmatter, oldKey)) return;
       if (Object.prototype.hasOwnProperty.call(frontmatter, newKey)) {
-        throw new Error(`目标属性已存在：${newKey}`);
+        throw new Error(t("targetPropertyExists", { name: newKey }));
       }
 
       const renamedEntries = Object.entries(frontmatter).map(([key, value]) =>
@@ -144,7 +145,9 @@ export class PropertyDataManager {
       try {
         replaceIndexedPropertyValue(frontmatter[key], oldValue, newValue);
       } catch (error) {
-        return error instanceof Error ? error.message : `无法转换 ${file.basename} 中的值。`;
+        return error instanceof Error
+          ? error.message
+          : t("conversionFailed", { name: file.basename });
       }
     }
     return null;

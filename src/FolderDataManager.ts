@@ -1,9 +1,16 @@
 import { App, getAllTags, TFile, TFolder } from "obsidian";
 import type { FolderGroupingRule } from "./FolderExplorerSettings";
+import { t } from "./I18n";
+import {
+  EMPTY_PROPERTY_VALUE,
+  indexPropertyValue,
+  UNSERIALIZABLE_PROPERTY_VALUE,
+} from "./PropertyValueMutation";
 
-export const UNSET_GROUP = "未设置";
+export const UNSET_GROUP = "\u0000facet-folders-unset";
 
 export interface VirtualFolderGroup {
+  id: string;
   name: string;
   files: TFile[];
 }
@@ -95,15 +102,16 @@ export class FolderDataManager {
       }
     }
     return Array.from(groups.entries())
-      .map(([name, files]) => ({
-        name,
+      .map(([id, files]) => ({
+        id,
+        name: id === UNSET_GROUP ? t("unset") : this.displayValue(id),
         files: Array.from(files.values()).sort((a, b) =>
           a.basename.localeCompare(b.basename),
         ),
       }))
       .sort((a, b) => {
-        if (a.name === UNSET_GROUP) return 1;
-        if (b.name === UNSET_GROUP) return -1;
+        if (a.id === UNSET_GROUP) return 1;
+        if (b.id === UNSET_GROUP) return -1;
         return a.name.localeCompare(b.name);
       });
   }
@@ -111,7 +119,9 @@ export class FolderDataManager {
   private getPropertyValues(file: TFile, key: string): string[] {
     const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter;
     if (!frontmatter || !Object.prototype.hasOwnProperty.call(frontmatter, key)) return [];
-    return this.normalizeValue(frontmatter[key]).filter((value) => value !== "（空值）");
+    return indexPropertyValue(frontmatter[key]).filter(
+      (value) => value !== EMPTY_PROPERTY_VALUE,
+    );
   }
 
   private getTagValues(file: TFile, prefix: string): string[] {
@@ -142,28 +152,7 @@ export class FolderDataManager {
     return tag.trim().replace(/^#+/, "").replace(/^\/+|\/+$/g, "");
   }
 
-  private normalizeValue(raw: unknown): string[] {
-    if (raw === null || raw === undefined) return [];
-    if (Array.isArray(raw)) {
-      return Array.from(new Set(raw.flatMap((value) => this.normalizeValue(value))));
-    }
-    if (typeof raw === "object") {
-      try {
-        const serialized = JSON.stringify(raw);
-        return serialized ? [serialized] : [];
-      } catch {
-        return ["[无法序列化的对象]"];
-      }
-    }
-    if (
-      typeof raw !== "string" &&
-      typeof raw !== "number" &&
-      typeof raw !== "boolean" &&
-      typeof raw !== "bigint"
-    ) {
-      return [];
-    }
-    const value = String(raw).trim();
-    return value ? [value] : [];
+  private displayValue(value: string): string {
+    return value === UNSERIALIZABLE_PROPERTY_VALUE ? t("unserializableObject") : value;
   }
 }

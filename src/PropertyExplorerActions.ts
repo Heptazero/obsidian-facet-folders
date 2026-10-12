@@ -16,6 +16,8 @@ import {
   PropertyEntry,
   ValueEntry,
 } from "./PropertyDataManager";
+import { t } from "./I18n";
+import { displayPropertyValue } from "./PropertyValueMutation";
 
 interface PropertyActionCallbacks {
   requestRender: () => void;
@@ -42,7 +44,7 @@ export class PropertyExplorerActions {
       item
         .setIcon(pinned ? "pin-off" : "pin")
         .setTitle(
-          `${pinned ? "取消置顶组" : "置顶组"}${manual ? "（切换到 A–Z）" : ""}`,
+          `${t(pinned ? "unpinGroup" : "pinGroup")}${manual ? t("switchToAz") : ""}`,
         )
         .onClick(() => void this.toggleGroupPinned(section.id)),
     );
@@ -50,14 +52,14 @@ export class PropertyExplorerActions {
     menu.addItem((item) =>
       item
         .setIcon("settings-2")
-        .setTitle("编辑组…")
+        .setTitle(t("editGroup"))
         .onClick(() => this.openGroupEditor(section.id)),
     );
     menu.addSeparator();
     menu.addItem((item) =>
       item
         .setIcon("ungroup")
-        .setTitle("解散组…")
+        .setTitle(t("dissolveGroup"))
         .setWarning(true)
         .onClick(() => this.openDissolveGroup(section)),
     );
@@ -76,7 +78,7 @@ export class PropertyExplorerActions {
       item
         .setIcon(pinned ? "pin-off" : "pin")
         .setTitle(
-          `${pinned ? "取消置顶属性" : "置顶属性"}${manual ? "（切换到 A–Z）" : ""}`,
+          `${t(pinned ? "unpinProperty" : "pinProperty")}${manual ? t("switchToAz") : ""}`,
         )
         .onClick(() => void this.togglePropertyPinned(scopeId, entry.key)),
     );
@@ -84,14 +86,14 @@ export class PropertyExplorerActions {
     menu.addItem((item) =>
       item
         .setIcon("pencil")
-        .setTitle("重命名属性…")
+        .setTitle(t("renameProperty"))
         .onClick(() => this.openRenameModal(entry)),
     );
     menu.addSeparator();
     menu.addItem((item) =>
       item
         .setIcon("trash-2")
-        .setTitle("删除属性…")
+        .setTitle(t("deleteProperty"))
         .setWarning(true)
         .onClick(() => this.openDeleteModal(entry)),
     );
@@ -107,7 +109,7 @@ export class PropertyExplorerActions {
     menu.addItem((item) =>
       item
         .setIcon("pencil")
-        .setTitle("批量修改此值…")
+        .setTitle(t("batchEditValue"))
         .onClick(() => this.openValueModal(propertyKey, valueEntry)),
     );
     menu.showAtMouseEvent(event);
@@ -148,7 +150,7 @@ export class PropertyExplorerActions {
     draft: PropertyGroupDraft,
   ): Promise<void> {
     this.callbacks.setLoading(
-      groupId ? `正在保存“${draft.name}”…` : `正在创建“${draft.name}”…`,
+      t(groupId ? "saveGroupLoading" : "createGroupLoading", { name: draft.name }),
     );
     try {
       if (groupId) await this.grouping.updateGroup(groupId, draft);
@@ -157,28 +159,28 @@ export class PropertyExplorerActions {
       this.callbacks.hideLoading();
       this.callbacks.requestRender();
       new Notice(
-        groupId ? `已更新属性组“${draft.name}”。` : `已创建属性组“${draft.name}”。`,
+        t(groupId ? "groupUpdated" : "groupCreated", { name: draft.name }),
       );
     } catch (error) {
       console.error("Facet Folders: cannot save group", error);
       this.callbacks.hideLoading();
-      new Notice(`无法保存属性组“${draft.name}”，请查看控制台。`);
+      new Notice(t("groupSaveFailed", { name: draft.name }));
     }
   }
 
   private async dissolveGroup(groupId: string, groupName: string): Promise<void> {
-    this.callbacks.setLoading(`正在解散“${groupName}”…`);
+    this.callbacks.setLoading(t("dissolveLoading", { name: groupName }));
     try {
       await this.grouping.dissolveGroup(groupId);
       this.callbacks.forgetGroup(groupId);
       await this.grouping.load();
       this.callbacks.hideLoading();
       this.callbacks.requestRender();
-      new Notice(`已解散属性组“${groupName}”，未修改任何笔记。`);
+      new Notice(t("dissolved", { name: groupName }));
     } catch (error) {
       console.error("Facet Folders: cannot dissolve group", error);
       this.callbacks.hideLoading();
-      new Notice(`无法解散属性组“${groupName}”，请查看控制台。`);
+      new Notice(t("dissolveFailed", { name: groupName }));
     }
   }
 
@@ -189,12 +191,12 @@ export class PropertyExplorerActions {
       entry.key,
       files.length,
       (newKey) => {
-        if (!newKey) return "属性名不能为空。";
-        if (newKey === entry.key) return "新属性名与原属性名相同。";
-        if (/[\r\n]/.test(newKey)) return "属性名不能包含换行。";
+        if (!newKey) return t("propertyNameRequired");
+        if (newKey === entry.key) return t("samePropertyName");
+        if (/[\r\n]/.test(newKey)) return t("propertyNameNewline");
         const conflicts = this.dataManager.getRenameConflicts(entry.key, newKey);
         if (conflicts.length > 0) {
-          return `${conflicts.length} 篇笔记已存在“${newKey}”，为避免覆盖，未执行重命名。`;
+          return t("renameConflict", { count: conflicts.length, name: newKey });
         }
         return null;
       },
@@ -219,10 +221,10 @@ export class PropertyExplorerActions {
       valueEntry.value,
       valueEntry.files.length,
       (newValue) => {
-        if (!newValue) return "新属性值不能为空。";
-        if (/\r|\n/.test(newValue)) return "属性值不能包含换行。";
+        if (!newValue) return t("valueRequired");
+        if (/\r|\n/.test(newValue)) return t("valueNewline");
         if (newValue === valueEntry.value && valueEntry.value !== EMPTY_VALUE) {
-          return "新属性值与原属性值相同。";
+          return t("samePropertyValue");
         }
         return this.dataManager.getValueReplacementError(
           propertyKey,
@@ -236,7 +238,7 @@ export class PropertyExplorerActions {
   }
 
   private async renameProperty(oldKey: string, newKey: string): Promise<void> {
-    this.callbacks.setLoading(`正在重命名“${oldKey}”…`);
+    this.callbacks.setLoading(t("renamingProperty", { name: oldKey }));
     try {
       const result = await this.dataManager.renameProperty(oldKey, newKey);
       this.callbacks.forgetProperty(oldKey);
@@ -245,28 +247,28 @@ export class PropertyExplorerActions {
       }
       await this.callbacks.reloadAfterMutation();
       this.reportMutation(
-        `已将“${oldKey}”重命名为“${newKey}”`,
+        t("renamedProperty", { old: oldKey, next: newKey }),
         result.updated,
         result.failures,
       );
     } catch (error) {
       console.error("Facet Folders: rename failed", error);
-      new Notice(`重命名“${oldKey}”失败，请查看控制台。`);
+      new Notice(t("renameFailed", { name: oldKey }));
       await this.callbacks.reloadAfterMutation();
     }
   }
 
   private async deleteProperty(key: string): Promise<void> {
-    this.callbacks.setLoading(`正在删除属性“${key}”…`);
+    this.callbacks.setLoading(t("deletingProperty", { name: key }));
     try {
       const result = await this.dataManager.deleteProperty(key);
       this.callbacks.forgetProperty(key);
       if (result.failures.length === 0) await this.grouping.removePropertyKey(key);
       await this.callbacks.reloadAfterMutation();
-      this.reportMutation(`已删除属性“${key}”`, result.updated, result.failures);
+      this.reportMutation(t("deletedProperty", { name: key }), result.updated, result.failures);
     } catch (error) {
       console.error("Facet Folders: delete failed", error);
-      new Notice(`删除属性“${key}”失败，请查看控制台。`);
+      new Notice(t("deleteFailed", { name: key }));
       await this.callbacks.reloadAfterMutation();
     }
   }
@@ -276,7 +278,7 @@ export class PropertyExplorerActions {
     valueEntry: ValueEntry,
     newValue: string,
   ): Promise<void> {
-    this.callbacks.setLoading(`正在修改“${propertyKey}”的属性值…`);
+    this.callbacks.setLoading(t("editingValue", { name: propertyKey }));
     try {
       const result = await this.dataManager.replacePropertyValue(
         propertyKey,
@@ -286,13 +288,16 @@ export class PropertyExplorerActions {
       );
       await this.callbacks.reloadAfterMutation();
       this.reportMutation(
-        `已将“${valueEntry.value}”修改为“${newValue}”`,
+        t("editedValue", {
+          old: displayPropertyValue(valueEntry.value),
+          next: newValue,
+        }),
         result.updated,
         result.failures,
       );
     } catch (error) {
       console.error("Facet Folders: property value update failed", error);
-      new Notice(`修改属性“${propertyKey}”的值失败，请查看控制台。`);
+      new Notice(t("editValueFailed", { name: propertyKey }));
       await this.callbacks.reloadAfterMutation();
     }
   }
@@ -319,10 +324,14 @@ export class PropertyExplorerActions {
     failures: Array<{ file: TFile; error: unknown }>,
   ): void {
     if (failures.length === 0) {
-      new Notice(`${message}，共更新 ${updated} 篇笔记。`);
+      new Notice(t("mutationDone", { message, count: updated }));
       return;
     }
     console.error("Facet Folders: some property updates failed", failures);
-    new Notice(`${message}：成功 ${updated} 篇，失败 ${failures.length} 篇。`);
+    new Notice(t("mutationPartial", {
+      message,
+      updated,
+      failed: failures.length,
+    }));
   }
 }

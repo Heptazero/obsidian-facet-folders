@@ -5,6 +5,7 @@ import {
   Setting,
   TFile,
 } from "obsidian";
+import { t } from "./I18n";
 
 export type TagBatchOperation = "add" | "remove";
 
@@ -74,15 +75,16 @@ export class TagBatchModal extends Modal {
     this.modalEl.addClass("gpe-tag-batch-modal");
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.createEl("h2", {
-      text: this.operation === "add" ? "批量添加标签" : "批量移除标签",
-    });
+    this.titleEl.setText(t(
+      this.operation === "add" ? "batchAddTagsTitle" : "batchRemoveTagsTitle",
+    ));
     contentEl.createEl("p", {
       cls: "gpe-tag-batch-scope",
       text:
-        this.operation === "add"
-          ? `将修改 ${this.files.length} 篇笔记的 frontmatter；正文中的 #标签不变。`
-          : `只从 ${this.files.length} 篇笔记的 frontmatter 移除标签；不删除笔记，正文中的 #标签不变。`,
+        t(
+          this.operation === "add" ? "batchAddTagsDesc" : "batchRemoveTagsDesc",
+          { count: this.files.length },
+        ),
     });
 
     const preview = contentEl.createDiv("gpe-tag-batch-files");
@@ -92,18 +94,20 @@ export class TagBatchModal extends Modal {
     if (this.files.length > 6) {
       preview.createDiv({
         cls: "gpe-tag-batch-more",
-        text: `另有 ${this.files.length - 6} 篇…`,
+        text: t("moreNotes", { count: this.files.length - 6 }),
       });
     }
 
     const errorEl = contentEl.createDiv("gpe-modal-error");
     const setting = new Setting(contentEl)
-      .setName(this.operation === "add" ? "添加" : "移除")
-      .setDesc("多个标签用逗号或空格分隔，无需输入 #。")
+      .setName(t(this.operation === "add" ? "add" : "remove"))
+      .setDesc(t("tagInputDesc"))
       .addText((text) => {
         this.inputValue = this.initialTags.join(", ");
         text
-          .setPlaceholder(this.operation === "add" ? "项目, 待处理" : "旧标签")
+          .setPlaceholder(t(
+            this.operation === "add" ? "addTagPlaceholder" : "removeTagPlaceholder",
+          ))
           .setValue(this.inputValue)
           .onChange((value) => {
             this.inputValue = value;
@@ -115,16 +119,16 @@ export class TagBatchModal extends Modal {
     setting.settingEl.addClass("gpe-tag-batch-input");
 
     const actions = contentEl.createDiv("gpe-tag-batch-actions");
-    const cancel = actions.createEl("button", { text: "取消" });
+    const cancel = actions.createEl("button", { text: t("cancel") });
     cancel.addEventListener("click", () => this.close());
     const submit = actions.createEl("button", {
       cls: this.operation === "remove" ? "mod-warning" : "mod-cta",
-      text: this.operation === "add" ? "添加标签" : "移除标签",
+      text: t(this.operation === "add" ? "addTags" : "removeTags"),
     });
     submit.addEventListener("click", () => {
       const tags = parseTagInput(this.inputValue);
       if (tags.length === 0) {
-        errorEl.setText("至少输入一个标签。");
+        errorEl.setText(t("enterTag"));
         return;
       }
       submit.disabled = true;
@@ -171,7 +175,7 @@ export async function applyFrontmatterTagBatch(
           typeof rawValue !== "string" &&
           (!Array.isArray(rawValue) || rawValue.some((tag) => typeof tag !== "string"))
         ) {
-          throw new Error(`不支持的 tags 格式：${file.path}`);
+          throw new Error(t("unsupportedTags", { path: file.path }));
         }
         const current = parseFrontmatterTags(rawValue);
         let next = [...current];

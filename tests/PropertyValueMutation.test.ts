@@ -1,8 +1,10 @@
 import {
+  displayPropertyValue,
   EMPTY_PROPERTY_VALUE,
   indexPropertyValue,
   replaceIndexedPropertyValue,
 } from "../src/PropertyValueMutation";
+import { setLanguage } from "../src/I18n";
 
 expectEqual(indexPropertyValue([]), [EMPTY_PROPERTY_VALUE]);
 expectEqual(indexPropertyValue(["active", "done", "active"]), ["active", "done"]);
@@ -47,6 +49,15 @@ expectEqual(
   replaceIndexedPropertyValue({ stage: "active" }, '{"stage":"active"}', '{"stage":"done"}'),
   { changed: true, value: { stage: "done" } },
 );
+expectEqual(displayPropertyValue(EMPTY_PROPERTY_VALUE), "（空值）");
+
+setLanguage("en");
+expectEqual(displayPropertyValue(EMPTY_PROPERTY_VALUE), "(empty)");
+expectThrows(
+  () => replaceIndexedPropertyValue(1, "1", "not-a-number"),
+  /valid number/,
+);
+setLanguage("zh-CN");
 
 function expectEqual(actual: unknown, expected: unknown): void {
   const actualText = JSON.stringify(actual);

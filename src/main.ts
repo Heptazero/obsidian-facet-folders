@@ -1,4 +1,10 @@
-import { Menu, Plugin, TFolder } from "obsidian";
+import { Menu, Notice, Plugin, TFolder } from "obsidian";
+import {
+  FacetFoldersDataStore,
+  FacetFoldersLanguage,
+} from "./FacetFoldersDataStore";
+import { FacetFoldersSettingTab } from "./FacetFoldersSettingTab";
+import { GROUPING_SETTINGS_CHANGED_EVENT } from "./FfgGrouping";
 import { FOLDER_FILE_MENU_SOURCE } from "./FolderExplorerPanel";
 import {
   GroupedPropertyExplorerView,
@@ -6,26 +12,34 @@ import {
 } from "./GroupedPropertyExplorerView";
 import { NotePropertyGrouping } from "./NotePropertyGrouping";
 import { NativeBaseColumnGrouping } from "./NativeBaseColumnGrouping";
+import { setLanguage, t } from "./I18n";
 
 export default class GroupedPropertyExplorerPlugin extends Plugin {
+  readonly dataStore = new FacetFoldersDataStore(this);
   private notePropertyGrouping: NotePropertyGrouping | null = null;
   private nativeBaseColumnGrouping: NativeBaseColumnGrouping | null = null;
+  private ribbonEl: HTMLElement | null = null;
 
   async onload(): Promise<void> {
+    await this.dataStore.load();
+    setLanguage(this.dataStore.getSettings().language);
+    this.addSettingTab(new FacetFoldersSettingTab(this.app, this));
     this.registerView(
       VIEW_TYPE_GROUPED_PROPERTY_EXPLORER,
       (leaf) => new GroupedPropertyExplorerView(leaf, this),
     );
 
-    this.addRibbonIcon("list-tree", "打开多维文件夹", () => void this.activateView());
+    this.ribbonEl = this.addRibbonIcon("list-tree", t("openExplorer"), () =>
+      void this.activateView(),
+    );
     this.addCommand({
       id: "open",
-      name: "打开多维文件夹",
+      name: t("openExplorer"),
       callback: () => void this.activateView(),
     });
     this.addCommand({
       id: "refresh",
-      name: "刷新多维文件夹",
+      name: t("refreshExplorer"),
       callback: () => void this.refreshViews(),
     });
 
@@ -49,6 +63,41 @@ export default class GroupedPropertyExplorerPlugin extends Plugin {
     this.notePropertyGrouping = null;
     this.nativeBaseColumnGrouping?.stop();
     this.nativeBaseColumnGrouping = null;
+  }
+
+  async setLanguageSetting(language: FacetFoldersLanguage): Promise<void> {
+    if (this.dataStore.getSettings().language === language) return;
+    try {
+      await this.dataStore.updateSettings({ language });
+      setLanguage(language);
+      this.ribbonEl?.setAttribute("aria-label", t("openExplorer"));
+      await this.refreshLanguageViews();
+      this.app.workspace.trigger(GROUPING_SETTINGS_CHANGED_EVENT);
+      new Notice(t("languageChanged"));
+    } catch (error) {
+      console.error("Facet Folders: cannot change language", error);
+      new Notice(t("languageChangeFailed"));
+    }
+  }
+
+  async setDataFolderSetting(dataFolder: string): Promise<void> {
+    if (this.dataStore.getSettings().dataFolder === dataFolder) return;
+    if (dataFolder !== "" && dataFolder !== ".") {
+      const target = this.app.vault.getAbstractFileByPath(dataFolder);
+      if (!(target instanceof TFolder)) {
+        new Notice(t("dataMoveFailed"));
+        return;
+      }
+    }
+    try {
+      await this.dataStore.updateSettings({ dataFolder });
+      await this.refreshViews();
+      this.app.workspace.trigger(GROUPING_SETTINGS_CHANGED_EVENT);
+      new Notice(t("dataMoved", { path: this.dataStore.getDataFilePath() }));
+    } catch (error) {
+      console.error("Facet Folders: cannot move plugin data", error);
+      new Notice(t("dataMoveFailed"));
+    }
   }
 
   private async initView(): Promise<void> {
@@ -93,19 +142,27 @@ export default class GroupedPropertyExplorerPlugin extends Plugin {
     }
   }
 
+  private async refreshLanguageViews(): Promise<void> {
+    for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_GROUPED_PROPERTY_EXPLORER)) {
+      if (leaf.view instanceof GroupedPropertyExplorerView) {
+        await leaf.view.refreshLanguage();
+      }
+    }
+  }
+
   private addFolderGroupingMenu(menu: Menu, folder: TFolder): void {
     menu.addItem((item) =>
       item
         .setSection("metadata-explorer")
         .setIcon("list-tree")
-        .setTitle("在多维文件夹中按属性分组…")
+        .setTitle(t("groupFolderByProperty"))
         .onClick(() => void this.openFolderGrouping(folder, "property")),
     );
     menu.addItem((item) =>
       item
         .setSection("metadata-explorer")
         .setIcon("tags")
-        .setTitle("在多维文件夹中按标签前缀分组…")
+        .setTitle(t("groupFolderByTag"))
         .onClick(() => void this.openFolderGrouping(folder, "tag")),
     );
     const view = this.getExplorerView();
@@ -114,7 +171,7 @@ export default class GroupedPropertyExplorerPlugin extends Plugin {
         item
           .setSection("metadata-explorer")
           .setIcon("ungroup")
-          .setTitle("移除元数据虚拟分组")
+          .setTitle(t("removeVirtualGrouping"))
           .setWarning(true)
           .onClick(() => void this.removeFolderGrouping(folder)),
       );

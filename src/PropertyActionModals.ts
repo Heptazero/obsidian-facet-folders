@@ -1,5 +1,9 @@
 import { App, Modal, Setting } from "obsidian";
-import { EMPTY_PROPERTY_VALUE } from "./PropertyValueMutation";
+import {
+  displayPropertyValue,
+  EMPTY_PROPERTY_VALUE,
+} from "./PropertyValueMutation";
+import { t } from "./I18n";
 
 export class RenamePropertyValueModal extends Modal {
   constructor(
@@ -14,19 +18,23 @@ export class RenamePropertyValueModal extends Modal {
   }
 
   onOpen(): void {
-    this.titleEl.setText("批量修改属性值");
+    this.titleEl.setText(t("batchEditValueTitle"));
     this.contentEl.createEl("p", {
-      text: `将属性“${this.propertyKey}”中值为“${this.oldValue}”的 ${this.noteCount} 篇笔记统一修改。`,
+      text: t("batchEditValueDesc", {
+        property: this.propertyKey,
+        value: displayPropertyValue(this.oldValue),
+        count: this.noteCount,
+      }),
     });
     this.contentEl.createEl("p", {
-      text: "多值属性只替换当前这一项，其他属性值和笔记文件不会改变。",
+      text: t("batchEditValueScope"),
     });
 
     const errorEl = this.contentEl.createDiv("gpe-modal-error");
     let nextValue = this.oldValue === EMPTY_PROPERTY_VALUE ? "" : this.oldValue;
     let submit = (): void => undefined;
 
-    new Setting(this.contentEl).setName("新属性值").addText((text) => {
+    new Setting(this.contentEl).setName(t("newPropertyValue")).addText((text) => {
       text.setValue(nextValue).onChange((value) => {
         nextValue = value;
         errorEl.empty();
@@ -55,8 +63,8 @@ export class RenamePropertyValueModal extends Modal {
 
     new Setting(this.contentEl)
       .setClass("gpe-modal-actions")
-      .addButton((button) => button.setButtonText("取消").onClick(() => this.close()))
-      .addButton((button) => button.setCta().setButtonText("批量修改").onClick(submit));
+      .addButton((button) => button.setButtonText(t("cancel")).onClick(() => this.close()))
+      .addButton((button) => button.setCta().setButtonText(t("batchEdit")).onClick(submit));
   }
 
   onClose(): void {
@@ -76,16 +84,16 @@ export class RenamePropertyModal extends Modal {
   }
 
   onOpen(): void {
-    this.titleEl.setText("重命名属性");
+    this.titleEl.setText(t("renamePropertyTitle"));
     this.contentEl.createEl("p", {
-      text: `将“${this.oldKey}”在 ${this.noteCount} 篇笔记中统一重命名，原属性值保持不变。`,
+      text: t("renamePropertyDesc", { name: this.oldKey, count: this.noteCount }),
     });
 
     const errorEl = this.contentEl.createDiv("gpe-modal-error");
     let nextKey = this.oldKey;
     let submit = (): void => undefined;
 
-    new Setting(this.contentEl).setName("新属性名").addText((text) => {
+    new Setting(this.contentEl).setName(t("newPropertyName")).addText((text) => {
       text.setValue(this.oldKey).onChange((value) => {
         nextKey = value;
         errorEl.empty();
@@ -114,8 +122,8 @@ export class RenamePropertyModal extends Modal {
 
     new Setting(this.contentEl)
       .setClass("gpe-modal-actions")
-      .addButton((button) => button.setButtonText("取消").onClick(() => this.close()))
-      .addButton((button) => button.setCta().setButtonText("重命名").onClick(submit));
+      .addButton((button) => button.setButtonText(t("cancel")).onClick(() => this.close()))
+      .addButton((button) => button.setCta().setButtonText(t("rename")).onClick(submit));
   }
 
   onClose(): void {
@@ -134,22 +142,25 @@ export class DeletePropertyModal extends Modal {
   }
 
   onOpen(): void {
-    this.titleEl.setText("删除属性");
+    this.titleEl.setText(t("deletePropertyTitle"));
     this.contentEl.createEl("p", {
-      text: `将在 ${this.noteCount} 篇笔记中删除属性“${this.propertyKey}”。`,
+      text: t("deletePropertyDesc", {
+        count: this.noteCount,
+        name: this.propertyKey,
+      }),
     });
     this.contentEl.createEl("p", {
       cls: "gpe-modal-warning",
-      text: "只删除该属性及其值，不会删除任何笔记文件。此操作会直接修改这些笔记。",
+      text: t("deletePropertyWarning"),
     });
 
     new Setting(this.contentEl)
       .setClass("gpe-modal-actions")
-      .addButton((button) => button.setButtonText("取消").onClick(() => this.close()))
+      .addButton((button) => button.setButtonText(t("cancel")).onClick(() => this.close()))
       .addButton((button) =>
         button
           .setClass("mod-warning")
-          .setButtonText("仅删除属性")
+          .setButtonText(t("deleteOnlyProperty"))
           .onClick(() => {
             this.close();
             this.onConfirm();

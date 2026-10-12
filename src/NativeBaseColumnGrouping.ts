@@ -3,7 +3,6 @@ import {
   BasesQueryResult,
   BasesViewConfig,
   Events,
-  Plugin,
   TFile,
   setIcon,
 } from "obsidian";
@@ -16,6 +15,7 @@ import {
   ColumnSegment,
   createBaseColumnLayout,
 } from "./BaseColumnGroupingModel";
+import type GroupedPropertyExplorerPlugin from "./main";
 
 interface NativeColumnInfo {
   getWidth: (minimum: number, maximum: number) => number;
@@ -82,7 +82,7 @@ const TABLE_VIEW_TYPE = "table";
 const COLLAPSED_COLUMN_WIDTH = 34;
 
 export class NativeBaseColumnGrouping {
-  private readonly plugin: Plugin;
+  private readonly plugin: GroupedPropertyExplorerPlugin;
   private readonly grouping: FfgGrouping;
   private readonly contexts = new Map<NativeTableView, ViewContext>();
   private readonly savedStates = new Map<string, SavedFoldState>();
@@ -91,9 +91,9 @@ export class NativeBaseColumnGrouping {
   private saveTimer: number | null = null;
   private processing = false;
 
-  constructor(plugin: Plugin) {
+  constructor(plugin: GroupedPropertyExplorerPlugin) {
     this.plugin = plugin;
-    this.grouping = new FfgGrouping(plugin.app);
+    this.grouping = new FfgGrouping(plugin.app, plugin.dataStore);
   }
 
   async start(): Promise<void> {
@@ -128,7 +128,10 @@ export class NativeBaseColumnGrouping {
   private async reloadGrouping(): Promise<void> {
     for (const [view, context] of this.contexts) this.restoreView(view, context);
     this.contexts.clear();
-    await this.grouping.load();
+    if (this.saveTimer !== null) window.clearTimeout(this.saveTimer);
+    this.saveTimer = null;
+    this.savedStates.clear();
+    await Promise.all([this.grouping.load(), this.loadStates()]);
     this.processAll();
   }
 
@@ -460,7 +463,7 @@ export class NativeBaseColumnGrouping {
   }
 
   private async loadStates(): Promise<void> {
-    const data = ((await this.plugin.loadData()) ?? {}) as PluginDataWithBaseGroups;
+    const data = await this.plugin.dataStore.read<PluginDataWithBaseGroups>();
     for (const [identity, state] of Object.entries(data.baseColumnGroups ?? {})) {
       if (!state || !Array.isArray(state.collapsed) || !Array.isArray(state.knownGroups)) {
         continue;
@@ -481,8 +484,8 @@ export class NativeBaseColumnGrouping {
   }
 
   private async saveStates(): Promise<void> {
-    const data = ((await this.plugin.loadData()) ?? {}) as PluginDataWithBaseGroups;
-    data.baseColumnGroups = Object.fromEntries(this.savedStates);
-    await this.plugin.saveData(data);
+    await this.plugin.dataStore.update((data) => {
+      data.baseColumnGroups = Object.fromEntries(this.savedStates);
+    });
   }
 }

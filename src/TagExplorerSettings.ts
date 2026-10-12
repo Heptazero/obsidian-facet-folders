@@ -1,4 +1,5 @@
-import { App, normalizePath } from "obsidian";
+import { App } from "obsidian";
+import { FacetFoldersDataStore } from "./FacetFoldersDataStore";
 import type { PropertyOrderMode } from "./FfgGrouping";
 import type { TagTreeNode } from "./TagDataManager";
 
@@ -24,7 +25,7 @@ export class TagExplorerSettings {
   private explorerMode: ExplorerMode = "properties";
   private order: TagOrderSettings = this.defaultOrder();
 
-  constructor(app: App) {
+  constructor(app: App, private readonly store: FacetFoldersDataStore) {
     this.app = app;
   }
 
@@ -176,11 +177,8 @@ export class TagExplorerSettings {
   }
 
   private async readData(): Promise<ExplorerData> {
-    const path = this.dataPath();
     try {
-      if (!(await this.app.vault.adapter.exists(path))) return {};
-      const parsed: unknown = JSON.parse(await this.app.vault.adapter.read(path));
-      return parsed && typeof parsed === "object" ? (parsed as ExplorerData) : {};
+      return await this.store.read<ExplorerData>();
     } catch (error) {
       console.error("Facet Folders: cannot read tag settings", error);
       return {};
@@ -188,16 +186,9 @@ export class TagExplorerSettings {
   }
 
   private async save(): Promise<void> {
-    const path = this.dataPath();
-    const data = await this.readData();
-    data.explorerMode = this.explorerMode;
-    data.tagOrder = this.order;
-    await this.app.vault.adapter.write(path, JSON.stringify(data, null, 2));
-  }
-
-  private dataPath(): string {
-    return normalizePath(
-      `${this.app.vault.configDir}/plugins/grouped-property-explorer/data.json`,
-    );
+    await this.store.update((data) => {
+      data.explorerMode = this.explorerMode;
+      data.tagOrder = this.order;
+    });
   }
 }

@@ -88,12 +88,13 @@ Reload Obsidian, enable **Facet Folders**, and use the list-tree ribbon icon or 
 4. Right-click a physical folder to create a virtual grouping from one property or tag prefix.
 5. Open a note or Base table to see the same property groups in the native interface.
 
-There is no separate settings page: grouping, ordering, pins, and batch actions stay beside the content they affect.
+The settings page contains only two global choices: interface language and plugin-data location. Both fields use fuzzy-searchable suggestion lists. Grouping, ordering, pins, and batch actions stay beside the content they affect.
 
 ## Data and compatibility
 
 - All indexing and edits happen locally in the vault.
-- Plugin-only view state is stored in its local `data.json`.
+- By default, plugin-only view state is stored in the plugin's local `data.json`.
+- You can select a vault folder in settings; Facet Folders then stores its groups, ordering, pins, and view state in `facet-folders-data.json` inside that folder. It never moves notes or frontmatter.
 - Existing Pinit order can be imported once when no Facet Folders pin order exists.
 - Compatible Foldable Frontmatter Groups settings can be reused and mirrored locally.
 - Native Bases enhancement targets Obsidian 1.12.7 and later and does not modify `.base` definitions.

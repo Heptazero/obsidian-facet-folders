@@ -1,5 +1,6 @@
 import { App, Menu, Notice, setIcon, TFile } from "obsidian";
 import type { PropertyOrderMode } from "./FfgGrouping";
+import { FacetFoldersDataStore } from "./FacetFoldersDataStore";
 import { OrderDragController } from "./OrderDragController";
 import {
   applyFrontmatterTagBatch,
@@ -11,6 +12,7 @@ import {
   ExplorerMode,
   TagExplorerSettings,
 } from "./TagExplorerSettings";
+import { t } from "./I18n";
 
 const HOVER_SOURCE = "grouped-property-explorer";
 
@@ -28,11 +30,15 @@ export class TagExplorerPanel {
   private readonly selectedFiles = new Map<string, TFile>();
   private selectionMode = false;
 
-  constructor(app: App, callbacks: TagExplorerCallbacks) {
+  constructor(
+    app: App,
+    store: FacetFoldersDataStore,
+    callbacks: TagExplorerCallbacks,
+  ) {
     this.app = app;
     this.callbacks = callbacks;
     this.dataManager = new TagDataManager(app);
-    this.settings = new TagExplorerSettings(app);
+    this.settings = new TagExplorerSettings(app, store);
   }
 
   async load(): Promise<void> {
@@ -95,7 +101,7 @@ export class TagExplorerPanel {
       setIcon(empty.createDiv("gpe-empty-icon"), query ? "search-x" : "tags");
       empty.createDiv({
         cls: "gpe-empty-text",
-        text: query ? `没有匹配“${query}”的标签或笔记` : "库中没有标签",
+        text: query ? t("noTagMatches", { query }) : t("noTags"),
       });
       return;
     }
@@ -130,7 +136,7 @@ export class TagExplorerPanel {
         kind: "tag",
         scope: node.parentPath,
         id: node.path,
-        label: `调整同级标签“${node.name}”的显示顺序`,
+        label: t("reorderTag", { name: node.name }),
         onMove: async (source, target, placement) => {
           await this.settings.moveTag(
             node.parentPath,
@@ -171,7 +177,10 @@ export class TagExplorerPanel {
     if (this.selectionMode) {
       const checkbox = row.createEl("input", {
         cls: "gpe-tag-note-checkbox",
-        attr: { type: "checkbox", "aria-label": `选择“${file.basename}”` },
+        attr: {
+          type: "checkbox",
+          "aria-label": t("selectNotes", { name: file.basename }),
+        },
       });
       checkbox.checked = this.selectedFiles.has(file.path);
       checkbox.addEventListener("click", (event) => event.stopPropagation());
@@ -218,7 +227,7 @@ export class TagExplorerPanel {
       item
         .setIcon(pinned ? "pin-off" : "pin")
         .setTitle(
-          `${pinned ? "取消置顶标签" : "置顶标签"}${manual ? "（切换到 A–Z）" : ""}`,
+          `${t(pinned ? "unpinTag" : "pinTag")}${manual ? t("switchToAz") : ""}`,
         )
         .onClick(() => void this.togglePinned(node)),
     );
@@ -226,19 +235,19 @@ export class TagExplorerPanel {
     menu.addItem((item) =>
       item
         .setIcon("list-checks")
-        .setTitle(`选择此标签下的 ${node.allFiles.length} 篇笔记`)
+        .setTitle(t("selectTagNotes", { count: node.allFiles.length }))
         .onClick(() => this.selectFiles(node.allFiles)),
     );
     menu.addItem((item) =>
       item
         .setIcon("tag")
-        .setTitle("批量添加标签…")
+        .setTitle(t("batchAddTags"))
         .onClick(() => this.openBatch(node.allFiles, "add", [])),
     );
     menu.addItem((item) =>
       item
         .setIcon("tag-x")
-        .setTitle("批量移除标签…")
+        .setTitle(t("batchRemoveTags"))
         .onClick(() => this.openBatch(node.allFiles, "remove", [node.path])),
     );
     menu.showAtMouseEvent(event);
@@ -248,12 +257,12 @@ export class TagExplorerPanel {
     const bar = container.createDiv("gpe-tag-selection-bar");
     bar.createSpan({
       cls: "gpe-tag-selection-count",
-      text: `已选 ${this.selectedFiles.size}`,
+      text: t("selectedNotes", { count: this.selectedFiles.size }),
     });
-    const add = this.iconButton(bar, "tag", "添加标签");
-    const remove = this.iconButton(bar, "tag-x", "移除标签");
-    const clear = this.iconButton(bar, "eraser", "清空选择");
-    const close = this.iconButton(bar, "x", "退出多选");
+    const add = this.iconButton(bar, "tag", t("addTags"));
+    const remove = this.iconButton(bar, "tag-x", t("removeTags"));
+    const clear = this.iconButton(bar, "eraser", t("clearSelection"));
+    const close = this.iconButton(bar, "x", t("exitSelection"));
     add.toggleAttribute("disabled", this.selectedFiles.size === 0);
     remove.toggleAttribute("disabled", this.selectedFiles.size === 0);
     clear.toggleAttribute("disabled", this.selectedFiles.size === 0);
@@ -298,7 +307,7 @@ export class TagExplorerPanel {
   ): void {
     const uniqueFiles = Array.from(new Map(files.map((file) => [file.path, file])).values());
     if (uniqueFiles.length === 0) {
-      new Notice("没有可修改的笔记。");
+      new Notice(t("noEditableNotes"));
       return;
     }
     new TagBatchModal(
@@ -317,11 +326,14 @@ export class TagExplorerPanel {
         if (result.failures.length > 0) {
           console.error("Facet Folders: some tag updates failed", result.failures);
         }
-        new Notice(
-          `已更新 ${result.updated} 篇，未变化 ${result.unchanged} 篇${
-            result.failures.length > 0 ? `，失败 ${result.failures.length} 篇` : ""
-          }。`,
-        );
+        const failed = result.failures.length > 0
+          ? t("tagBatchFailedSuffix", { count: result.failures.length })
+          : "";
+        new Notice(t("tagBatchResult", {
+          updated: result.updated,
+          unchanged: result.unchanged,
+          failed,
+        }));
         await new Promise<void>((resolve) => window.setTimeout(resolve, 300));
         await this.dataManager.buildIndex();
         this.selectedFiles.clear();

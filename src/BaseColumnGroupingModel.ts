@@ -1,5 +1,6 @@
 import type { BasesPropertyId } from "obsidian";
 import type { FfgGrouping, PropertyKeySection } from "./FfgGrouping";
+import { t } from "./I18n";
 
 export interface ColumnSegment {
   id: string;
@@ -50,9 +51,9 @@ export function createBaseColumnLayout(
     segments.push({ id, name, properties: members, collapsible, defaultFolded });
   };
 
-  pushSegment("__base-top", "常用", arrangement.top, false, false, fixed);
+  pushSegment("__base-top", t("common"), arrangement.top, false, false, fixed);
   const unmatched = arrangement.sections.find((section) => section.kind === "unmatched");
-  pushSegment("__base-unmatched", "未分组", unmatched?.keys ?? [], false, false);
+  pushSegment("__base-unmatched", t("unmatched"), unmatched?.keys ?? [], false, false);
   for (const section of arrangement.sections) {
     if (section.kind !== "group") continue;
     const group = section as PropertyKeySection & { kind: "group" };

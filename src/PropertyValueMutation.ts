@@ -1,4 +1,7 @@
-export const EMPTY_PROPERTY_VALUE = "（空值）";
+import { t } from "./I18n";
+
+export const EMPTY_PROPERTY_VALUE = "\u0000facet-folders-empty";
+export const UNSERIALIZABLE_PROPERTY_VALUE = "\u0000facet-folders-unserializable";
 
 export interface PropertyValueReplacement {
   changed: boolean;
@@ -18,7 +21,7 @@ export function indexPropertyValue(raw: unknown): string[] {
       const serialized = JSON.stringify(raw);
       return serialized ? [serialized] : [EMPTY_PROPERTY_VALUE];
     } catch {
-      return ["[无法序列化的对象]"];
+      return [UNSERIALIZABLE_PROPERTY_VALUE];
     }
   }
   if (
@@ -66,13 +69,13 @@ export function replaceIndexedPropertyValue(
 function coerceReplacement(raw: unknown, newValue: string): unknown {
   if (typeof raw === "number") {
     const parsed = Number(newValue);
-    if (!Number.isFinite(parsed)) throw new Error("新值必须是有效数字。");
+    if (!Number.isFinite(parsed)) throw new Error(t("numberRequired"));
     return parsed;
   }
   if (typeof raw === "boolean") {
     const normalized = newValue.toLowerCase();
     if (normalized !== "true" && normalized !== "false") {
-      throw new Error("布尔属性的新值只能是 true 或 false。");
+      throw new Error(t("booleanRequired"));
     }
     return normalized === "true";
   }
@@ -80,7 +83,7 @@ function coerceReplacement(raw: unknown, newValue: string): unknown {
     try {
       return BigInt(newValue);
     } catch {
-      throw new Error("新值必须是有效整数。");
+      throw new Error(t("integerRequired"));
     }
   }
   if (raw !== null && typeof raw === "object") {
@@ -91,10 +94,16 @@ function coerceReplacement(raw: unknown, newValue: string): unknown {
       }
       return parsed;
     } catch {
-      throw new Error("对象属性的新值必须是有效 JSON 对象。");
+      throw new Error(t("jsonObjectRequired"));
     }
   }
   return newValue;
+}
+
+export function displayPropertyValue(value: string): string {
+  if (value === EMPTY_PROPERTY_VALUE) return t("emptyValue");
+  if (value === UNSERIALIZABLE_PROPERTY_VALUE) return t("unserializableObject");
+  return value;
 }
 
 function deduplicateValues(values: unknown[]): unknown[] {

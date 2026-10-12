@@ -1,4 +1,5 @@
 import { App, normalizePath } from "obsidian";
+import { FacetFoldersDataStore } from "./FacetFoldersDataStore";
 import type { PropertyEntry } from "./PropertyDataManager";
 import { createRuntimeGroup, FolderTemplate } from "./FfgMatcher";
 import {
@@ -6,6 +7,7 @@ import {
   PropertyOrderMode,
   PropertyOrderSettings,
 } from "./PropertyOrderManager";
+import { t } from "./I18n";
 
 export type { PropertyOrderMode } from "./PropertyOrderManager";
 
@@ -86,7 +88,7 @@ export class FfgGrouping {
   private readonly order = new PropertyOrderManager();
   private configFound = false;
 
-  constructor(app: App) {
+  constructor(app: App, private readonly store: FacetFoldersDataStore) {
     this.app = app;
   }
 
@@ -360,7 +362,7 @@ export class FfgGrouping {
   private unmatchedSection(entries: PropertyEntry[]): PropertySection {
     return {
       id: "__unmatched",
-      name: "未分组",
+      name: t("unmatched"),
       defaultFolded: false,
       entries,
       kind: "unmatched",
@@ -447,14 +449,8 @@ export class FfgGrouping {
   }
 
   private async readOwnData(): Promise<GroupedPropertyExplorerData> {
-    const ownPath = normalizePath(
-      `${this.app.vault.configDir}/plugins/grouped-property-explorer/data.json`,
-    );
     try {
-      if (await this.app.vault.adapter.exists(ownPath)) {
-        const parsed: unknown = JSON.parse(await this.app.vault.adapter.read(ownPath));
-        if (parsed && typeof parsed === "object") return parsed;
-      }
+      return await this.store.read<GroupedPropertyExplorerData>();
     } catch (error) {
       console.error("Grouped Property Explorer: cannot read local settings", error);
     }
@@ -462,14 +458,11 @@ export class FfgGrouping {
   }
 
   private async persistOwnData(): Promise<void> {
-    const ownPath = normalizePath(
-      `${this.app.vault.configDir}/plugins/grouped-property-explorer/data.json`,
-    );
     try {
-      const ownData = await this.readOwnData();
-      ownData.ffgSettings = this.settings;
-      ownData.propertyOrder = this.order.serialize();
-      await this.app.vault.adapter.write(ownPath, JSON.stringify(ownData, null, 2));
+      await this.store.update((ownData) => {
+        ownData.ffgSettings = this.settings;
+        ownData.propertyOrder = this.order.serialize();
+      });
       this.app.workspace.trigger(GROUPING_SETTINGS_CHANGED_EVENT);
     } catch (error) {
       console.error("Grouped Property Explorer: cannot save local settings", error);

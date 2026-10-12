@@ -13,6 +13,9 @@ import {
   PropertyEntry,
   ValueEntry,
 } from "./PropertyDataManager";
+import { FacetFoldersDataStore } from "./FacetFoldersDataStore";
+import { t } from "./I18n";
+import { displayPropertyValue } from "./PropertyValueMutation";
 
 const HOVER_SOURCE = "grouped-property-explorer";
 
@@ -36,10 +39,11 @@ export class PropertyExplorerPanel {
 
   constructor(
     private readonly app: App,
+    store: FacetFoldersDataStore,
     private readonly callbacks: PropertyPanelCallbacks,
   ) {
     this.dataManager = new PropertyDataManager(app);
-    this.grouping = new FfgGrouping(app);
+    this.grouping = new FfgGrouping(app, store);
     this.actions = new PropertyExplorerActions(app, this.dataManager, this.grouping, {
       requestRender: callbacks.requestRender,
       setLoading: callbacks.setLoading,
@@ -88,7 +92,7 @@ export class PropertyExplorerPanel {
     const filtered = this.filterEntries(this.dataManager.getEntries());
     const arrangement = this.grouping.arrange(filtered);
     if (!arrangement.configFound) {
-      status.setText("未检测到 Foldable Frontmatter Groups 配置，暂按未分组显示。");
+      status.setText(t("ffgMissing"));
       status.show();
     } else {
       status.hide();
@@ -113,7 +117,9 @@ export class PropertyExplorerPanel {
     setIcon(empty.createDiv("gpe-empty-icon"), this.query ? "search-x" : "inbox");
     empty.createDiv({
       cls: "gpe-empty-text",
-      text: this.query ? `没有匹配“${this.query}”的属性` : "库中没有属性",
+      text: this.query
+        ? t("noPropertyMatches", { query: this.query })
+        : t("noProperties"),
     });
   }
 
@@ -139,7 +145,7 @@ export class PropertyExplorerPanel {
         kind: "property-group",
         scope: "root",
         id: section.id,
-        label: `拖动属性组“${section.name}”`,
+        label: `${t("manualOrder")}：${section.name}`,
         onMove: async (source, target, placement) => {
           await this.grouping.moveGroup(source, target, placement);
           this.callbacks.requestRender();
@@ -185,7 +191,7 @@ export class PropertyExplorerPanel {
         kind: "property",
         scope: scopeId,
         id: entry.key,
-        label: `拖动属性“${entry.key}”`,
+        label: `${t("manualOrder")}：${entry.key}`,
         onMove: async (source, target, placement) => {
           await this.grouping.moveProperty(
             scopeId,
@@ -218,6 +224,7 @@ export class PropertyExplorerPanel {
 
   private buildValue(entry: PropertyEntry, valueEntry: ValueEntry): HTMLElement {
     const stateKey = `${entry.key}\u0000${valueEntry.value}`;
+    const displayValue = displayPropertyValue(valueEntry.value);
     const expanded = this.expandedValues.has(stateKey);
     const wrap = createDiv("gpe-value");
     const header = wrap.createDiv("gpe-value-header");
@@ -226,7 +233,7 @@ export class PropertyExplorerPanel {
     const value = header.createDiv({
       cls: `gpe-value-text${valueEntry.value === EMPTY_VALUE ? " is-empty" : ""}`,
     });
-    this.highlightText(value, valueEntry.value);
+    this.highlightText(value, displayValue);
     header.createDiv({ cls: "gpe-count", text: String(valueEntry.files.length) });
     header.addEventListener("click", () => {
       this.toggleExpanded(this.expandedValues, stateKey);
@@ -272,7 +279,7 @@ export class PropertyExplorerPanel {
     return entries.filter((entry) => {
       if (entry.key.toLowerCase().includes(query)) return true;
       for (const value of entry.values.values()) {
-        if (value.value.toLowerCase().includes(query)) return true;
+        if (displayPropertyValue(value.value).toLowerCase().includes(query)) return true;
         if (value.files.some((file) => file.basename.toLowerCase().includes(query))) {
           return true;
         }
@@ -286,19 +293,22 @@ export class PropertyExplorerPanel {
       if (this.query) {
         const query = this.query.toLowerCase();
         const matchDifference =
-          Number(!a.value.toLowerCase().includes(query)) -
-          Number(!b.value.toLowerCase().includes(query));
+          Number(!displayPropertyValue(a.value).toLowerCase().includes(query)) -
+          Number(!displayPropertyValue(b.value).toLowerCase().includes(query));
         if (matchDifference !== 0) return matchDifference;
       }
       if (a.files.length !== b.files.length) return b.files.length - a.files.length;
-      return a.value.localeCompare(b.value);
+      return displayPropertyValue(a.value).localeCompare(displayPropertyValue(b.value));
     });
   }
 
   private filteredNotes(propertyKey: string, value: string, files: TFile[]): TFile[] {
     if (!this.query) return [...files];
     const query = this.query.toLowerCase();
-    if (propertyKey.toLowerCase().includes(query) || value.toLowerCase().includes(query)) {
+    if (
+      propertyKey.toLowerCase().includes(query) ||
+      displayPropertyValue(value).toLowerCase().includes(query)
+    ) {
       return [...files];
     }
     return files.filter((file) => file.basename.toLowerCase().includes(query));
@@ -323,7 +333,7 @@ export class PropertyExplorerPanel {
   }
 
   private async reloadAfterMutation(): Promise<void> {
-    this.callbacks.setLoading("正在刷新属性索引…");
+    this.callbacks.setLoading(t("refreshingPropertyIndex"));
     await new Promise<void>((resolve) => window.setTimeout(resolve, 250));
     await Promise.all([
       this.grouping.load(),

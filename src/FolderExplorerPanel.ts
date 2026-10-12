@@ -1,10 +1,12 @@
 import { App, Menu, setIcon, TFile, TFolder } from "obsidian";
 import { FolderDataManager, VirtualFolderGroup } from "./FolderDataManager";
+import { FacetFoldersDataStore } from "./FacetFoldersDataStore";
 import {
   FolderExplorerSettings,
   FolderGroupingRule,
 } from "./FolderExplorerSettings";
 import { openFolderGroupingPicker } from "./FolderGroupingModal";
+import { t } from "./I18n";
 
 const HOVER_SOURCE = "grouped-property-explorer";
 const FILE_MENU_SOURCE = "metadata-explorer-folder-view";
@@ -20,10 +22,11 @@ export class FolderExplorerPanel {
 
   constructor(
     private readonly app: App,
+    store: FacetFoldersDataStore,
     private readonly callbacks: FolderPanelCallbacks,
   ) {
     this.data = new FolderDataManager(app);
-    this.settings = new FolderExplorerSettings(app);
+    this.settings = new FolderExplorerSettings(app, store);
   }
 
   async load(): Promise<void> {
@@ -78,7 +81,7 @@ export class FolderExplorerPanel {
       setIcon(empty.createDiv("gpe-empty-icon"), this.query ? "search-x" : "folder-open");
       empty.createDiv({
         cls: "gpe-empty-text",
-        text: this.query ? "没有匹配的文件夹或笔记" : "库中没有笔记",
+        text: this.query ? t("noFolderMatches") : t("noFolders"),
       });
       return;
     }
@@ -151,13 +154,13 @@ export class FolderExplorerPanel {
       menu.addItem((item) =>
         item
           .setIcon("pencil")
-          .setTitle("更换分组字段…")
+          .setTitle(t("changeGroupingField"))
           .onClick(() => this.configureFolder(folder, rule.kind)),
       );
       menu.addItem((item) =>
         item
           .setIcon("ungroup")
-          .setTitle("移除虚拟分组")
+          .setTitle(t("removeVirtualGrouping"))
           .setWarning(true)
           .onClick(() => void this.removeGrouping(folder)),
       );
@@ -171,7 +174,7 @@ export class FolderExplorerPanel {
   }
 
   private buildValueGroup(parentId: string, group: VirtualFolderGroup): HTMLElement {
-    const id = `${parentId}::${group.name}`;
+    const id = `${parentId}::${group.id}`;
     const expanded = Boolean(this.query) || this.settings.isVirtualExpanded(id);
     const wrap = createDiv("gpe-virtual-node");
     const header = wrap.createDiv("gpe-virtual-header");
@@ -235,20 +238,20 @@ export class FolderExplorerPanel {
     menu.addItem((item) =>
       item
         .setIcon("list-tree")
-        .setTitle("按属性分组…")
+        .setTitle(t("groupByProperty"))
         .onClick(() => this.configureFolder(folder, "property")),
     );
     menu.addItem((item) =>
       item
         .setIcon("tags")
-        .setTitle("按标签前缀分组…")
+        .setTitle(t("groupByTag"))
         .onClick(() => this.configureFolder(folder, "tag")),
     );
     if (this.settings.getGrouping(folder.path)) {
       menu.addItem((item) =>
         item
           .setIcon("ungroup")
-          .setTitle("移除虚拟分组")
+          .setTitle(t("removeVirtualGrouping"))
           .setWarning(true)
           .onClick(() => void this.removeGrouping(folder)),
       );
@@ -271,7 +274,7 @@ export class FolderExplorerPanel {
     menu.addItem((item) =>
       item
         .setIcon(pinned ? "pin-off" : "pin")
-        .setTitle(pinned ? "取消置顶" : "置顶到文件夹顶部")
+        .setTitle(t(pinned ? "unpin" : "pin"))
         .onClick(() => {
           void this.settings.togglePinned(folder.path, file.path).then(() =>
             this.callbacks.requestRender(),
@@ -283,7 +286,7 @@ export class FolderExplorerPanel {
     const index = pins.indexOf(file.path);
     if (index > 0) {
       menu.addItem((item) =>
-        item.setIcon("arrow-up").setTitle("向上移动置顶笔记").onClick(() => {
+        item.setIcon("arrow-up").setTitle(t("movePinnedUp")).onClick(() => {
           void this.settings.movePin(folder.path, file.path, -1).then(() =>
             this.callbacks.requestRender(),
           );
@@ -292,7 +295,7 @@ export class FolderExplorerPanel {
     }
     if (index >= 0 && index < pins.length - 1) {
       menu.addItem((item) =>
-        item.setIcon("arrow-down").setTitle("向下移动置顶笔记").onClick(() => {
+        item.setIcon("arrow-down").setTitle(t("movePinnedDown")).onClick(() => {
           void this.settings.movePin(folder.path, file.path, 1).then(() =>
             this.callbacks.requestRender(),
           );

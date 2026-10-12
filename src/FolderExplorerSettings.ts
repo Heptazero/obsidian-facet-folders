@@ -1,4 +1,5 @@
 import { App, normalizePath } from "obsidian";
+import { FacetFoldersDataStore } from "./FacetFoldersDataStore";
 
 export type FolderGroupingRule =
   | { kind: "property"; key: string }
@@ -16,10 +17,16 @@ interface ExplorerData {
   [key: string]: unknown;
 }
 
+const LEGACY_UNSET_GROUP_SUFFIX = "::未设置";
+const UNSET_GROUP_SUFFIX = "::\u0000facet-folders-unset";
+
 export class FolderExplorerSettings {
   private state: FolderExplorerState = this.defaults();
 
-  constructor(private readonly app: App) {}
+  constructor(
+    private readonly app: App,
+    private readonly store: FacetFoldersDataStore,
+  ) {}
 
   async load(): Promise<void> {
     const data = await this.readData();
@@ -180,7 +187,11 @@ export class FolderExplorerSettings {
     if (!value || typeof value !== "object") return defaults;
     return {
       expandedFolders: this.stringArray(value.expandedFolders),
-      expandedVirtual: this.stringArray(value.expandedVirtual),
+      expandedVirtual: this.stringArray(value.expandedVirtual).map((id) =>
+        id.endsWith(LEGACY_UNSET_GROUP_SUFFIX)
+          ? `${id.slice(0, -LEGACY_UNSET_GROUP_SUFFIX.length)}${UNSET_GROUP_SUFFIX}`
+          : id,
+      ),
       groupings: this.normalizeGroupings(value.groupings),
       pins: this.stringMap(value.pins),
     };
@@ -246,10 +257,7 @@ export class FolderExplorerSettings {
 
   private async readData(): Promise<ExplorerData> {
     try {
-      const path = this.dataPath();
-      if (!(await this.app.vault.adapter.exists(path))) return {};
-      const parsed: unknown = JSON.parse(await this.app.vault.adapter.read(path));
-      return parsed && typeof parsed === "object" ? (parsed as ExplorerData) : {};
+      return await this.store.read<ExplorerData>();
     } catch (error) {
       console.error("Facet Folders: cannot read folder settings", error);
       return {};
@@ -257,15 +265,8 @@ export class FolderExplorerSettings {
   }
 
   private async save(): Promise<void> {
-    const path = this.dataPath();
-    const data = await this.readData();
-    data.folderExplorer = this.state;
-    await this.app.vault.adapter.write(path, JSON.stringify(data, null, 2));
-  }
-
-  private dataPath(): string {
-    return normalizePath(
-      `${this.app.vault.configDir}/plugins/grouped-property-explorer/data.json`,
-    );
+    await this.store.update((data) => {
+      data.folderExplorer = this.state;
+    });
   }
 }

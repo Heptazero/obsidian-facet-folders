@@ -1,4 +1,5 @@
-import { App, Events, Plugin, setIcon } from "obsidian";
+import { App, Events, setIcon } from "obsidian";
+import type GroupedPropertyExplorerPlugin from "./main";
 import {
   FfgGrouping,
   GROUPING_SETTINGS_CHANGED_EVENT,
@@ -12,16 +13,16 @@ const GROUP_SIZE = 10_000;
 
 export class NotePropertyGrouping {
   private readonly app: App;
-  private readonly plugin: Plugin;
+  private readonly plugin: GroupedPropertyExplorerPlugin;
   private readonly grouping: FfgGrouping;
   private readonly foldState = new WeakMap<HTMLElement, Map<string, boolean>>();
   private observer: MutationObserver | null = null;
   private processing = false;
 
-  constructor(plugin: Plugin) {
+  constructor(plugin: GroupedPropertyExplorerPlugin) {
     this.plugin = plugin;
     this.app = plugin.app;
-    this.grouping = new FfgGrouping(plugin.app);
+    this.grouping = new FfgGrouping(plugin.app, plugin.dataStore);
   }
 
   async start(): Promise<void> {

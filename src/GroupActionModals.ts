@@ -1,5 +1,6 @@
 import { App, Modal, Setting } from "obsidian";
 import type { PropertyGroupConfig, PropertyGroupDraft } from "./FfgGrouping";
+import { t } from "./I18n";
 
 type EditorMode = "select" | "regex";
 
@@ -46,11 +47,11 @@ export class GroupEditorModal extends Modal {
 
   onOpen(): void {
     this.modalEl.addClass("gpe-group-editor-modal");
-    this.titleEl.setText(this.initial ? "编辑属性组" : "新建属性组");
+    this.titleEl.setText(t(this.initial ? "editPropertyGroup" : "newPropertyGroup"));
 
     const errorEl = this.contentEl.createDiv("gpe-modal-error");
-    new Setting(this.contentEl).setName("组名").addText((text) => {
-      text.setPlaceholder("例如：项目元数据").setValue(this.groupName).onChange((value) => {
+    new Setting(this.contentEl).setName(t("groupName")).addText((text) => {
+      text.setPlaceholder(t("groupNameExample")).setValue(this.groupName).onChange((value) => {
         this.groupName = value;
         errorEl.empty();
       });
@@ -59,12 +60,12 @@ export class GroupEditorModal extends Modal {
 
     let modeBody: HTMLElement;
     new Setting(this.contentEl)
-      .setName("匹配方式")
-      .setDesc("选择具体属性，或用正则自动接收将来出现的属性。")
+      .setName(t("matchMode"))
+      .setDesc(t("matchModeDesc"))
       .addDropdown((dropdown) => {
         dropdown
-          .addOption("select", "选择属性")
-          .addOption("regex", "正则表达式")
+          .addOption("select", t("selectProperties"))
+          .addOption("regex", t("regex"))
           .setValue(this.mode)
           .onChange((value) => {
             this.mode = value === "regex" ? "regex" : "select";
@@ -77,9 +78,9 @@ export class GroupEditorModal extends Modal {
     this.renderModeBody(modeBody);
     new Setting(this.contentEl)
       .setClass("gpe-modal-actions")
-      .addButton((button) => button.setButtonText("取消").onClick(() => this.close()))
+      .addButton((button) => button.setButtonText(t("cancel")).onClick(() => this.close()))
       .addButton((button) =>
-        button.setCta().setButtonText(this.initial ? "保存" : "创建").onClick(() => {
+        button.setCta().setButtonText(t(this.initial ? "save" : "create")).onClick(() => {
           const error = this.validateAndSave();
           if (error) errorEl.setText(error);
         }),
@@ -95,11 +96,11 @@ export class GroupEditorModal extends Modal {
     if (this.mode === "regex") {
       container.createEl("p", {
         cls: "gpe-group-help",
-        text: "每行一个正则表达式。属性名匹配任意一行时进入该组。",
+        text: t("regexHelp"),
       });
       new Setting(container).addTextArea((text) => {
         text
-          .setPlaceholder("例如：^ai[-_]\n^agent-")
+          .setPlaceholder(t("regexExample"))
           .setValue(this.regexText)
           .onChange((value) => {
             this.regexText = value;
@@ -112,28 +113,29 @@ export class GroupEditorModal extends Modal {
 
     container.createEl("p", {
       cls: "gpe-group-help",
-      text: this.initial
-        ? "显示未分组属性和当前组属性，不会与其他组产生重复匹配。"
-        : "只显示尚未进入其他组的属性。",
+      text: t(this.initial ? "editGroupScope" : "newGroupScope"),
     });
     const controls = container.createDiv("gpe-property-picker-controls");
     const search = controls.createEl("input", {
       cls: "gpe-property-picker-search",
-      attr: { type: "search", placeholder: "筛选属性…", spellcheck: "false" },
+      attr: { type: "search", placeholder: t("filterProperties"), spellcheck: "false" },
     });
     const count = controls.createSpan("gpe-property-picker-count");
     const actions = controls.createDiv("gpe-property-picker-actions");
-    const selectVisible = actions.createEl("button", { text: "全选可见" });
-    const clear = actions.createEl("button", { text: "清空" });
+    const selectVisible = actions.createEl("button", { text: t("selectVisible") });
+    const clear = actions.createEl("button", { text: t("clear") });
     const list = container.createDiv("gpe-property-picker-list");
 
     const renderList = (): void => {
       list.empty();
       const query = search.value.trim().toLowerCase();
       const visible = this.orderedKeys.filter((key) => key.toLowerCase().includes(query));
-      count.setText(`已选 ${this.selected.size} / 可选 ${this.orderedKeys.length}`);
+      count.setText(t("selectedProperties", {
+        selected: this.selected.size,
+        available: this.orderedKeys.length,
+      }));
       if (visible.length === 0) {
-        list.createDiv({ cls: "gpe-property-picker-empty", text: "没有匹配的属性" });
+        list.createDiv({ cls: "gpe-property-picker-empty", text: t("noMatchingProperties") });
         return;
       }
       for (const key of visible) {
@@ -144,7 +146,10 @@ export class GroupEditorModal extends Modal {
         checkbox.addEventListener("change", () => {
           if (checkbox.checked) this.selected.add(key);
           else this.selected.delete(key);
-          count.setText(`已选 ${this.selected.size} / 可选 ${this.orderedKeys.length}`);
+          count.setText(t("selectedProperties", {
+            selected: this.selected.size,
+            available: this.orderedKeys.length,
+          }));
         });
       }
     };
@@ -166,9 +171,9 @@ export class GroupEditorModal extends Modal {
 
   private validateAndSave(): string | null {
     const name = this.groupName.trim();
-    if (!name) return "组名不能为空。";
+    if (!name) return t("groupNameRequired");
     if (this.existingNames.some((existing) => existing.toLowerCase() === name.toLowerCase())) {
-      return `已经存在名为“${name}”的组。`;
+      return t("duplicateGroupName", { name });
     }
 
     let matcherType: "unified" | "regex";
@@ -177,7 +182,7 @@ export class GroupEditorModal extends Modal {
     if (this.mode === "select") {
       matcherType = "unified";
       matcherValues = this.orderedKeys.filter((key) => this.selected.has(key));
-      if (matcherValues.length === 0) return "请至少选择一个属性。";
+      if (matcherValues.length === 0) return t("selectOneProperty");
       fieldOrder = [...matcherValues];
     } else {
       matcherType = "regex";
@@ -185,12 +190,12 @@ export class GroupEditorModal extends Modal {
         .split(/\r?\n/)
         .map((value) => value.trim())
         .filter(Boolean);
-      if (matcherValues.length === 0) return "请至少输入一个正则表达式。";
+      if (matcherValues.length === 0) return t("enterOneRegex");
       for (const pattern of matcherValues) {
         try {
           new RegExp(pattern);
         } catch {
-          return `无效的正则表达式：${pattern}`;
+          return t("invalidRegex", { pattern });
         }
       }
       fieldOrder = this.initial?.fieldOrder ? [...this.initial.fieldOrder] : [];
@@ -229,21 +234,24 @@ export class DissolveGroupModal extends Modal {
   }
 
   onOpen(): void {
-    this.titleEl.setText("解散属性组");
+    this.titleEl.setText(t("dissolveGroupTitle"));
     this.contentEl.createEl("p", {
-      text: `将解散“${this.groupName}”，其中 ${this.propertyCount} 个属性会回到未分组，或由其他匹配规则接管。`,
+      text: t("dissolveGroupDesc", {
+        name: this.groupName,
+        count: this.propertyCount,
+      }),
     });
     this.contentEl.createEl("p", {
       cls: "gpe-group-help",
-      text: "不会删除属性、属性值或笔记文件。",
+      text: t("dissolveGroupWarning"),
     });
     new Setting(this.contentEl)
       .setClass("gpe-modal-actions")
-      .addButton((button) => button.setButtonText("取消").onClick(() => this.close()))
+      .addButton((button) => button.setButtonText(t("cancel")).onClick(() => this.close()))
       .addButton((button) =>
         button
           .setClass("mod-warning")
-          .setButtonText("解散组")
+          .setButtonText(t("dissolveGroup"))
           .onClick(() => {
             this.close();
             this.onConfirm();
