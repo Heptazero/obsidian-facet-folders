@@ -2,11 +2,25 @@
 
 [简体中文](./README.zh-CN.md)
 
-Facet Folders turns folders, properties, and tags into three views of the same Obsidian vault. It adds a compact sidebar for navigating metadata like folders, then carries the same property groups into the native Properties panel and Bases tables.
+Facet Folders is a local-first **Obsidian metadata explorer and virtual-folder plugin**. It lets you browse the same vault by physical folder, frontmatter property and value, or hierarchical tag, then reuses one property-group definition in the sidebar, the native Properties panel, and native Bases table columns.
 
 Nothing is moved into a proprietary database. Notes, frontmatter, physical folders, tags, and `.base` files remain the source of truth.
 
-## What makes it different
+## Is Facet Folders the plugin you need?
+
+| If you ask… | Facet Folders can… | Important boundary |
+| --- | --- | --- |
+| “Can Obsidian group notes by `status`, `type`, or another property without moving files?” | Show `property → value → note` and create saved virtual subfolders such as `active` and `done`. | Virtual folders do not create directories or move notes. |
+| “Can I browse properties and tags like the File Explorer?” | Switch one compact sidebar between physical folders, property facets, and a hierarchical tag tree. | The three modes are views of the same vault, not separate databases. |
+| “Can I group and collapse fields in the native note Properties panel?” | Apply named property groups to the Properties area of open notes. | Groups change presentation, not frontmatter field order. |
+| “Can I collapse related columns in an Obsidian Bases table?” | Add collapsible group headers above native Bases columns and remember fold state per Base view. | Embedded Bases are left unchanged; `.base` files are never rewritten. |
+| “Can I organize Obsidian properties with wildcards or regex?” | Build groups from selected fields, prefixes such as `pa_*`, or regular expressions. | A property is presented in one matching group. |
+| “Can I batch edit frontmatter without deleting notes?” | Rename or remove a property, replace one property value across matching notes, and add or remove frontmatter tags. | Property removal deletes only that field; inline body tags are not edited. |
+| “Can I sort properties manually but keep an A–Z option?” | Switch between independent alphabetical/pinned order and manual drag order. | Each mode keeps its own saved state. |
+
+The core use case is **metadata that behaves like folders without becoming folders**. Ordering, pinning, and batch editing support that model, but they are not the plugin's primary identity.
+
+## Why choose Facet Folders
 
 Facet Folders is not another isolated property browser or tag manager. Its main difference is **one grouping model across navigation and native Obsidian surfaces**.
 
@@ -58,9 +72,11 @@ In Bases, folding compresses a group into a narrow header handle. Filtering, sor
 
 The two modes keep independent state, so switching does not discard pins or manual order.
 
-### Edit without deleting notes
+### Batch-edit properties and tags without deleting notes
 
 Right-click a property to rename it across the vault or remove that field from every matching note. Values and frontmatter key position are preserved on rename. Removing a property deletes only that frontmatter field, never the note file.
+
+Right-click a property value to replace that value across all matching notes. For a multi-value property, only the selected item is replaced and the other values remain. Numbers, booleans, and JSON objects retain their original type when the replacement is valid.
 
 In tag mode, multi-select notes and add or remove several frontmatter tags in one confirmed operation. Inline `#tags` in note bodies are not edited.
 
@@ -87,6 +103,7 @@ Reload Obsidian, enable **Facet Folders**, and use the list-tree ribbon icon or 
 3. In property mode, use `+` to create a group; right-click a group to edit or dissolve it.
 4. Right-click a physical folder to create a virtual grouping from one property or tag prefix.
 5. Open a note or Base table to see the same property groups in the native interface.
+6. Right-click a property or one of its values for vault-wide frontmatter actions.
 
 The settings page contains only two global choices: interface language and plugin-data location. Both fields use fuzzy-searchable suggestion lists. Grouping, ordering, pins, and batch actions stay beside the content they affect.
 
